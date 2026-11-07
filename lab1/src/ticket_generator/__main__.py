@@ -21,15 +21,17 @@ from .generator import RandomTicketGenerator
 from .console import get_console_io
 
 
-def main() -> int:
+def main(default_file: Path | str | None = None) -> int:
+    default_path = str(default_file) if default_file is not None else "journal.xlsx"
+
     parser = argparse.ArgumentParser(
         description="Генератор экзаменационных билетов с сохранением в Excel (Лабораторная работа №1)"
     )
     parser.add_argument(
         "--file",
         "-f",
-        default="journal.xlsx",
-        help="Путь к файлу журнала Excel (по умолчанию: journal.xlsx)",
+        default=default_path,
+        help=f"Путь к файлу журнала Excel (по умолчанию: {default_path})",
     )
     parser.add_argument(
         "--min-ticket",

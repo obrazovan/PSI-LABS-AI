@@ -49,6 +49,7 @@ class TicketApp:
 
         # Шаг 1: Подсказка при запуске
         self.console.show_startup_hint()
+        self.console.print(f"Файл журнала: {self.storage.file_path.resolve()}\n")
 
         try:
             while True:

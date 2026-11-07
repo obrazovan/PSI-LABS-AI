@@ -20,12 +20,14 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 # Добавляем каталог src в sys.path для корректного импорта пакета
-src_dir = Path(__file__).resolve().parent / "src"
+base_dir = Path(__file__).resolve().parent
+src_dir = base_dir / "src"
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 from ticket_generator.__main__ import main
 
 if __name__ == "__main__":
-    sys.exit(main())
-
+    # По умолчанию сохраняем journal.xlsx в каталоге lab1
+    default_journal = base_dir / "journal.xlsx"
+    sys.exit(main(default_file=default_journal))
