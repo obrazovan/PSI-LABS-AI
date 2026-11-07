@@ -18,6 +18,8 @@ class ResultDialog(tk.Toplevel):
     - Показывает 'Ваш билет № N' и три вопроса билета.
     - Нажатие клавиши ESC закрывает окно результата и возвращает к выбору
       в основном окне, само приложение при этом не завершается.
+    - Кнопка 'Закрыть (ESC)' всегда видна внизу окна без необходимости его растягивать.
+    - Чистый современный дизайн без пустых лишних областей.
     """
 
     def __init__(
@@ -34,14 +36,14 @@ class ResultDialog(tk.Toplevel):
         self.is_repeat = is_repeat
 
         self.title("Результат генерации билета")
-        self.geometry("560x420")
-        self.minsize(480, 360)
+        self.geometry("600x520")
+        self.minsize(520, 440)
         self.resizable(True, True)
+
+        self._build_ui()
 
         # Центрирование относительно родительского окна
         self._center_window()
-
-        self._build_ui()
 
         # Привязка клавиши ESC: закрывает диалог, возвращая к главному окну
         self.bind("<Escape>", lambda event: self._close_dialog())
@@ -59,105 +61,118 @@ class ResultDialog(tk.Toplevel):
         px = self.parent.winfo_x()
         py = self.parent.winfo_y()
 
-        w = 560
-        h = 420
+        w = 600
+        h = 520
         x = px + max(0, (pw - w) // 2)
         y = py + max(0, (ph - h) // 2)
         self.geometry(f"{w}x{h}+{x}+{y}")
 
     def _build_ui(self) -> None:
         """Построение элементов интерфейса окна результата."""
-        main_frame = ttk.Frame(self, padding="20 20 20 15")
+        main_frame = ttk.Frame(self, padding="20 16 20 16")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Главный заголовок: «Ваш билет № N»
+        # 1. НИЖНЯЯ ПАНЕЛЬ С КНОПКОЙ ЗАКРЫТИЯ (упаковываем первой через side=BOTTOM!)
+        # Это гарантирует, что кнопка "Закрыть (ESC)" ВСЕГДА видна и не перекрывается
+        bottom_frame = ttk.Frame(main_frame)
+        bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(12, 0))
+
+        hint_lbl = ttk.Label(
+            bottom_frame,
+            text="Нажмите ESC на клавиатуре для быстрого закрытия",
+            font=("Segoe UI", 9, "italic"),
+            foreground="#64748B",
+        )
+        hint_lbl.pack(side=tk.LEFT, pady=4)
+
+        close_btn = ttk.Button(
+            bottom_frame,
+            text="Закрыть (ESC)",
+            style="Accent.TButton",
+            command=self._close_dialog,
+        )
+        close_btn.pack(side=tk.RIGHT)
+
+        # 2. ВЕРХНЯЯ ЧАСТЬ: Заголовок и информация о студенте
         header_text = f"Ваш билет № {self.ticket.number}"
         header_lbl = ttk.Label(
             main_frame,
             text=header_text,
             font=("Segoe UI", 18, "bold"),
-            foreground="#1B365D",
+            foreground="#1E3A8A",
             anchor="center",
         )
-        header_lbl.pack(pady=(0, 6), fill=tk.X)
+        header_lbl.pack(side=tk.TOP, pady=(0, 4), fill=tk.X)
 
-        # Подзаголовок: Студент и группа
+        student_info = f"Студент: {self.student.full_name}   •   Группа: {self.student.group}"
         student_lbl = ttk.Label(
             main_frame,
-            text=f"Студент: {self.student.full_name}   |   Группа: {self.student.group}",
-            font=("Segoe UI", 10),
-            foreground="#4A5568",
+            text=student_info,
+            font=("Segoe UI", 10, "bold"),
+            foreground="#475569",
             anchor="center",
         )
-        student_lbl.pack(pady=(0, 10), fill=tk.X)
+        student_lbl.pack(side=tk.TOP, pady=(0, 10), fill=tk.X)
 
-        # Если это повторная генерация — выводим информационный бейдж
+        # Информационная плашка в случае повторной генерации
         if self.is_repeat:
             repeat_frame = tk.Frame(main_frame, bg="#FEF3C7", bd=1, relief=tk.SOLID)
-            repeat_frame.pack(fill=tk.X, pady=(0, 12), ipady=4)
+            repeat_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 12), ipady=5)
             repeat_lbl = tk.Label(
                 repeat_frame,
-                text="⚠️ Повторный запрос: билет выдан повторно из первой записи в журнале",
+                text="⚠️ Повторная сдача: выдан ранее назначенный билет (отмечено в журнале)",
                 bg="#FEF3C7",
                 fg="#92400E",
                 font=("Segoe UI", 9, "bold"),
             )
             repeat_lbl.pack()
 
-        # Рамка со списком вопросов
-        q_container = ttk.LabelFrame(main_frame, text="Вопросы экзаменационного билета", padding="12 10")
-        q_container.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
-
-        # Холст с прокруткой для вопросов
-        canvas = tk.Canvas(q_container, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(q_container, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all")),
+        # 3. ЦЕНТРАЛЬНАЯ ЧАСТЬ: Карточки с вопросами билета
+        # Используем чистый ttk.LabelFrame без лишних холстов и белых прямоугольников
+        q_container = ttk.LabelFrame(
+            main_frame,
+            text="Вопросы экзаменационного билета",
+            padding="14 12",
         )
+        q_container.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw", width=480)
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # Отображение вопросов билета (минимум 3 по ТЗ)
         for idx, question in enumerate(self.ticket.questions, start=1):
-            q_box = ttk.Frame(scrollable_frame, padding="0 4 0 8")
-            q_box.pack(fill=tk.X, expand=True)
+            # Карточка каждого вопроса
+            q_card = tk.Frame(q_container, bg="#F1F5F9", bd=1, relief=tk.GROOVE)
+            q_card.pack(fill=tk.X, pady=(0, 8), padx=2, ipady=6, ipadx=8)
 
-            # Форматируем вопрос, чтобы номер выделялся
+            # Бейдж с номером вопроса
+            badge_frame = tk.Frame(q_card, bg="#E2E8F0")
+            badge_frame.pack(anchor="w", padx=6, pady=(4, 2))
+
+            badge_lbl = tk.Label(
+                badge_frame,
+                text=f"Вопрос {idx}",
+                font=("Segoe UI", 8, "bold"),
+                bg="#E2E8F0",
+                fg="#334155",
+                padx=6,
+                pady=1,
+            )
+            badge_lbl.pack()
+
+            # Формулировка вопроса
             clean_q = question
-            q_text_lbl = ttk.Label(
-                q_box,
+            # Убираем префикс вида '1. ' или '2. ' если он уже есть в тексте, чтобы не дублировать
+            if clean_q.startswith(f"{idx}.") or clean_q.startswith(f"{idx})"):
+                clean_q = clean_q[len(str(idx)) + 1:].strip()
+
+            q_text_lbl = tk.Label(
+                q_card,
                 text=clean_q,
                 font=("Segoe UI", 10),
-                wraplength=460,
+                bg="#F1F5F9",
+                fg="#0F172A",
+                wraplength=500,
                 justify="left",
+                anchor="w",
             )
-            q_text_lbl.pack(anchor="w")
-
-        # Нижняя панель с кнопкой закрытия
-        bottom_frame = ttk.Frame(main_frame)
-        bottom_frame.pack(fill=tk.X, pady=(5, 0))
-
-        hint_lbl = ttk.Label(
-            bottom_frame,
-            text="Нажмите ESC для возврата к выбору",
-            font=("Segoe UI", 9, "italic"),
-            foreground="#718096",
-        )
-        hint_lbl.pack(side=tk.LEFT)
-
-        close_btn = ttk.Button(
-            bottom_frame,
-            text="Закрыть (ESC)",
-            command=self._close_dialog,
-        )
-        close_btn.pack(side=tk.RIGHT)
+            q_text_lbl.pack(fill=tk.X, padx=8, pady=(2, 4))
 
     def _close_dialog(self) -> None:
         """Закрывает окно результата и передает фокус родителю."""

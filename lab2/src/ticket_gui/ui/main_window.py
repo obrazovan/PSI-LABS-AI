@@ -35,11 +35,8 @@ class MainWindow(tk.Tk):
         self.service = service
 
         self.title("Генератор экзаменационных билетов — Лабораторная работа №2")
-        self.geometry("540x380")
-        self.minsize(480, 320)
-
-        # Центрирование главного окна
-        self._center_window()
+        self.geometry("560x430")
+        self.minsize(500, 390)
 
         # Данные интерфейса
         self._group_students: list[Student] = []
@@ -51,6 +48,9 @@ class MainWindow(tk.Tk):
         # Построение элементов
         self._build_ui()
 
+        # Центрирование главного окна
+        self._center_window()
+
         # Инициализация сервиса и заполнение списков
         self._initialize_data()
 
@@ -61,51 +61,67 @@ class MainWindow(tk.Tk):
         except Exception:
             pass
 
+        # Настройка шрифтов и цветов ttk
         style.configure("TLabel", font=("Segoe UI", 10))
-        style.configure("Header.TLabel", font=("Segoe UI", 13, "bold"), foreground="#1B365D")
-        style.configure("Accent.TButton", font=("Segoe UI", 10, "bold"), padding=6)
-        style.configure("Status.TLabel", font=("Segoe UI", 9), foreground="#4A5568")
+        style.configure("Header.TLabel", font=("Segoe UI", 15, "bold"), foreground="#1E3A8A")
+        style.configure("SubHeader.TLabel", font=("Segoe UI", 9), foreground="#64748B")
+        style.configure("FieldTitle.TLabel", font=("Segoe UI", 10, "bold"), foreground="#1E293B")
+        style.configure("Accent.TButton", font=("Segoe UI", 11, "bold"), padding=8)
+        style.configure("Status.TLabel", font=("Segoe UI", 9), foreground="#334155")
+        style.configure("TLabelframe", padding=12)
+        style.configure("TLabelframe.Label", font=("Segoe UI", 10, "bold"), foreground="#334155")
 
     def _center_window(self) -> None:
         self.update_idletasks()
         sw = self.winfo_screenwidth()
         sh = self.winfo_screenheight()
-        w = 540
-        h = 380
+        w = 560
+        h = 430
         x = max(0, (sw - w) // 2)
         y = max(0, (sh - h) // 2)
         self.geometry(f"{w}x{h}+{x}+{y}")
 
     def _build_ui(self) -> None:
-        main_frame = ttk.Frame(self, padding="24 20 24 20")
+        main_frame = ttk.Frame(self, padding="24 20 24 16")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Заголовок
+        # 1. Заголовок и подзаголовок
+        header_frame = ttk.Frame(main_frame)
+        header_frame.pack(fill=tk.X, pady=(0, 16))
+
         header = ttk.Label(
-            main_frame,
+            header_frame,
             text="Распределение экзаменационных билетов",
             style="Header.TLabel",
             anchor="center",
         )
-        header.pack(fill=tk.X, pady=(0, 15))
+        header.pack(fill=tk.X)
 
-        # Карточка формы выбора
+        sub_header = ttk.Label(
+            header_frame,
+            text="Автоматизированная система назначения билетов студентам",
+            style="SubHeader.TLabel",
+            anchor="center",
+        )
+        sub_header.pack(fill=tk.X, pady=(2, 0))
+
+        # 2. Карточка формы выбора
         form_frame = ttk.LabelFrame(main_frame, text="Параметры выбора", padding="16 14")
-        form_frame.pack(fill=tk.X, expand=False, pady=(0, 15))
+        form_frame.pack(fill=tk.X, expand=False, pady=(0, 16))
 
         # 1. Выпадающий список групп
-        ttk.Label(form_frame, text="1. Выберите группу:").pack(anchor="w", pady=(0, 4))
+        ttk.Label(form_frame, text="🎓 1. Выберите учебную группу:", style="FieldTitle.TLabel").pack(anchor="w", pady=(0, 5))
         self.group_combo = ttk.Combobox(form_frame, state="readonly", font=("Segoe UI", 10))
-        self.group_combo.pack(fill=tk.X, pady=(0, 12))
+        self.group_combo.pack(fill=tk.X, pady=(0, 14))
         self.group_combo.bind("<<ComboboxSelected>>", self._on_group_selected)
 
         # 2. Выпадающий список студентов
-        ttk.Label(form_frame, text="2. Выберите студента:").pack(anchor="w", pady=(0, 4))
+        ttk.Label(form_frame, text="👤 2. Выберите студента:", style="FieldTitle.TLabel").pack(anchor="w", pady=(0, 5))
         self.student_combo = ttk.Combobox(form_frame, state="disabled", font=("Segoe UI", 10))
-        self.student_combo.pack(fill=tk.X, pady=(0, 8))
+        self.student_combo.pack(fill=tk.X, pady=(0, 6))
         self.student_combo.bind("<<ComboboxSelected>>", self._on_student_selected)
 
-        # Кнопка «Сгенерировать билет» (по умолчанию неактивна)
+        # 3. Кнопка «Сгенерировать билет» (по умолчанию неактивна)
         self.generate_btn = ttk.Button(
             main_frame,
             text="Сгенерировать билет",
@@ -113,16 +129,19 @@ class MainWindow(tk.Tk):
             state="disabled",
             command=self._on_generate_clicked,
         )
-        self.generate_btn.pack(fill=tk.X, ipady=4, pady=(5, 10))
+        self.generate_btn.pack(fill=tk.X, pady=(4, 16), ipady=2)
 
-        # Статусная строка внизу
+        # 4. Нижняя статусная панель
+        status_bar = ttk.Frame(main_frame, relief=tk.FLAT)
+        status_bar.pack(fill=tk.X, side=tk.BOTTOM)
+
         self.status_lbl = ttk.Label(
-            main_frame,
+            status_bar,
             text="Готово к работе",
             style="Status.TLabel",
             anchor="w",
         )
-        self.status_lbl.pack(fill=tk.X, side=tk.BOTTOM)
+        self.status_lbl.pack(fill=tk.X, side=tk.LEFT)
 
     def _initialize_data(self) -> None:
         """Инициализация сервиса и заполнение начальных списков с валидацией файлов."""
@@ -148,7 +167,7 @@ class MainWindow(tk.Tk):
                 + "\n\nПожалуйста, поместите необходимые файлы в каталог приложения."
             )
             self.status_lbl.config(
-                text="Ошибка: входные файлы не найдены!",
+                text="⚠️ Входные файлы не найдены!",
                 foreground="#DC2626",
             )
             messagebox.showwarning("Входные файлы не найдены", err_msg, parent=self)
@@ -158,14 +177,14 @@ class MainWindow(tk.Tk):
         groups = self.service.get_groups()
         if not groups:
             self.status_lbl.config(
-                text="Внимание: в файле students.xlsx нет листов с группами.",
+                text="⚠️ В файле students.xlsx нет листов с группами.",
                 foreground="#D97706",
             )
             return
 
         self.group_combo["values"] = groups
         self.status_lbl.config(
-            text=f"Загружено групп: {len(groups)}, билетов: {len(self.service.tickets)}",
+            text=f"● Загружено групп: {len(groups)}, валидных билетов: {len(self.service.tickets)}",
             foreground="#16A34A",
         )
 
@@ -188,7 +207,7 @@ class MainWindow(tk.Tk):
             self.student_combo.config(state="disabled")
             self.generate_btn.config(state="disabled")
             self.status_lbl.config(
-                text=f"В группе '{selected_group}' нет студентов.",
+                text=f"⚠️ В группе '{selected_group}' нет студентов.",
                 foreground="#D97706",
             )
             return
@@ -203,7 +222,7 @@ class MainWindow(tk.Tk):
         self.generate_btn.config(state="disabled")
         self.status_lbl.config(
             text=f"Группа '{selected_group}': {len(student_names)} студентов. Выберите студента.",
-            foreground="#4A5568",
+            foreground="#475569",
         )
 
     def _on_student_selected(self, event: tk.Event | None = None) -> None:
@@ -214,8 +233,8 @@ class MainWindow(tk.Tk):
             # Кнопка становится активной только при наличии обоих выборов
             self.generate_btn.config(state="normal")
             self.status_lbl.config(
-                text=f"Выбран: {self._selected_student.full_name}. Нажмите 'Сгенерировать билет'.",
-                foreground="#1B365D",
+                text=f"● Выбран: {self._selected_student.full_name}. Нажмите 'Сгенерировать билет'.",
+                foreground="#1E3A8A",
             )
         else:
             self._selected_student = None
@@ -256,9 +275,9 @@ class MainWindow(tk.Tk):
         )
 
         # Обновляем статус
-        repeat_badge = " [ПОВТОРНО]" if result.is_repeat else ""
+        repeat_badge = " (ПОВТОРНО)" if result.is_repeat else ""
         self.status_lbl.config(
-            text=f"Билет №{ticket.number} успешно назначен для {self._selected_student.full_name}{repeat_badge}",
+            text=f"✓ Билет №{ticket.number} назначен для {self._selected_student.full_name}{repeat_badge}",
             foreground="#16A34A",
         )
 
