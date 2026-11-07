@@ -52,6 +52,16 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
-# Application generated runtime files (Excel journals and lock files)
-*.xlsx
+# Temporary lock files
 ~$*.xlsx
+~$*.docx
+
+# Runtime generated Excel journals
+journal.xlsx
+results.xlsx
+
+# Ignore xlsx files except sample and template data
+*.xlsx
+!sample_data/**
+!lab2/students.xlsx
+!lab2/sample_data/**
