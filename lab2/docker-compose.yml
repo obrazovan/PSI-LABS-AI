@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  ticket-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ticket_generator_web
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - APP_LOG_LEVEL=INFO
+    volumes:
+      - ./results.xlsx:/app/results.xlsx
+      - ./students.xlsx:/app/students.xlsx:ro
+      - ./tickets.docx:/app/tickets.docx:ro
+    restart: unless-stopped

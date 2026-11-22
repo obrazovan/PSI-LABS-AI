@@ -3,6 +3,13 @@ UI компоненты для приложения генерации биле�
 """
 
 from .main_window import MainWindow
+from .presenters import TkAlertNotifier, TkFileLockHandler, TkResultPresenter
 from .result_dialog import ResultDialog
 
-__all__ = ["MainWindow", "ResultDialog"]
+__all__ = [
+    "MainWindow",
+    "ResultDialog",
+    "TkAlertNotifier",
+    "TkFileLockHandler",
+    "TkResultPresenter",
+]

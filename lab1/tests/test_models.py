@@ -48,11 +48,11 @@ class TestStudentRecord:
         with pytest.raises(TypeError, match="целым числом"):
             StudentRecord(last_name="Иванов", first_name="Иван", ticket_number=True)  # type: ignore
 
-    def test_to_row(self):
+    def test_domain_model_is_decoupled_from_table_serialization(self):
         record = StudentRecord(
             last_name="Сидоров",
             first_name="Олег",
             ticket_number=18,
             timestamp="2026-11-04 15:30:00",
         )
-        assert record.to_row() == ["Сидоров", "Олег", 18, "2026-11-04 15:30:00"]
+        assert not hasattr(record, "to_row")

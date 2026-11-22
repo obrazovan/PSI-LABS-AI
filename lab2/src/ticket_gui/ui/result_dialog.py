@@ -5,7 +5,6 @@
 from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
-from typing import Optional
 
 from ..models import Student, Ticket
 
@@ -19,12 +18,11 @@ class ResultDialog(tk.Toplevel):
     - Нажатие клавиши ESC закрывает окно результата и возвращает к выбору
       в основном окне, само приложение при этом не завершается.
     - Кнопка 'Закрыть (ESC)' всегда видна внизу окна без необходимости его растягивать.
-    - Чистый современный дизайн без пустых лишних областей.
     """
 
     def __init__(
         self,
-        parent: tk.Tk | tk.Toplevel,
+        parent: tk.Misc,
         ticket: Ticket,
         student: Student,
         is_repeat: bool = False,
@@ -41,14 +39,10 @@ class ResultDialog(tk.Toplevel):
         self.resizable(True, True)
 
         self._build_ui()
-
-        # Центрирование относительно родительского окна
         self._center_window()
 
-        # Привязка клавиши ESC: закрывает диалог, возвращая к главному окну
         self.bind("<Escape>", lambda event: self._close_dialog())
 
-        # Делаем окно модальным
         self.transient(parent)
         self.grab_set()
         self.focus_set()
@@ -72,8 +66,7 @@ class ResultDialog(tk.Toplevel):
         main_frame = ttk.Frame(self, padding="20 16 20 16")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 1. НИЖНЯЯ ПАНЕЛЬ С КНОПКОЙ ЗАКРЫТИЯ (упаковываем первой через side=BOTTOM!)
-        # Это гарантирует, что кнопка "Закрыть (ESC)" ВСЕГДА видна и не перекрывается
+        # Нижняя панель с кнопкой закрытия (упаковывается первой через side=BOTTOM)
         bottom_frame = ttk.Frame(main_frame)
         bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(12, 0))
 
@@ -93,28 +86,25 @@ class ResultDialog(tk.Toplevel):
         )
         close_btn.pack(side=tk.RIGHT)
 
-        # 2. ВЕРХНЯЯ ЧАСТЬ: Заголовок и информация о студенте
-        header_text = f"Ваш билет № {self.ticket.number}"
+        # Заголовок и информация о студенте
         header_lbl = ttk.Label(
             main_frame,
-            text=header_text,
+            text=f"Ваш билет № {self.ticket.number}",
             font=("Segoe UI", 18, "bold"),
             foreground="#1E3A8A",
             anchor="center",
         )
         header_lbl.pack(side=tk.TOP, pady=(0, 4), fill=tk.X)
 
-        student_info = f"Студент: {self.student.full_name}   •   Группа: {self.student.group}"
         student_lbl = ttk.Label(
             main_frame,
-            text=student_info,
+            text=f"Студент: {self.student.full_name}   •   Группа: {self.student.group}",
             font=("Segoe UI", 10, "bold"),
             foreground="#475569",
             anchor="center",
         )
         student_lbl.pack(side=tk.TOP, pady=(0, 10), fill=tk.X)
 
-        # Информационная плашка в случае повторной генерации
         if self.is_repeat:
             repeat_frame = tk.Frame(main_frame, bg="#FEF3C7", bd=1, relief=tk.SOLID)
             repeat_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 12), ipady=5)
@@ -127,8 +117,7 @@ class ResultDialog(tk.Toplevel):
             )
             repeat_lbl.pack()
 
-        # 3. ЦЕНТРАЛЬНАЯ ЧАСТЬ: Карточки с вопросами билета
-        # Используем чистый ttk.LabelFrame без лишних холстов и белых прямоугольников
+        # Карточки с вопросами билета
         q_container = ttk.LabelFrame(
             main_frame,
             text="Вопросы экзаменационного билета",
@@ -137,11 +126,9 @@ class ResultDialog(tk.Toplevel):
         q_container.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         for idx, question in enumerate(self.ticket.questions, start=1):
-            # Карточка каждого вопроса
             q_card = tk.Frame(q_container, bg="#F1F5F9", bd=1, relief=tk.GROOVE)
             q_card.pack(fill=tk.X, pady=(0, 8), padx=2, ipady=6, ipadx=8)
 
-            # Бейдж с номером вопроса
             badge_frame = tk.Frame(q_card, bg="#E2E8F0")
             badge_frame.pack(anchor="w", padx=6, pady=(4, 2))
 
@@ -156,15 +143,9 @@ class ResultDialog(tk.Toplevel):
             )
             badge_lbl.pack()
 
-            # Формулировка вопроса
-            clean_q = question
-            # Убираем префикс вида '1. ' или '2. ' если он уже есть в тексте, чтобы не дублировать
-            if clean_q.startswith(f"{idx}.") or clean_q.startswith(f"{idx})"):
-                clean_q = clean_q[len(str(idx)) + 1:].strip()
-
             q_text_lbl = tk.Label(
                 q_card,
-                text=clean_q,
+                text=question,
                 font=("Segoe UI", 10),
                 bg="#F1F5F9",
                 fg="#0F172A",

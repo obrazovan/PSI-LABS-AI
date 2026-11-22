@@ -10,15 +10,6 @@
 import sys
 from pathlib import Path
 
-# Обеспечиваем корректное отображение кириллицы в консоли Windows
-if hasattr(sys.stdout, "reconfigure"):
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
-        sys.stdin.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
-
 # Добавляем каталог src в sys.path для корректного импорта пакета
 base_dir = Path(__file__).resolve().parent
 src_dir = base_dir / "src"

@@ -1,0 +1,1288 @@
+/* ==========================================================================
+   ACADEMIC EXAMINATION REGISTRAR — DESIGN SYSTEM
+   Государственная Академическая Экзаменационная Комиссия
+   Bespoke, non-template, authentic academic & physical stationery aesthetic.
+   ========================================================================== */
+
+:root {
+  /* Типографика */
+  --font-serif: 'EB Garamond', 'Georgia', 'Baskerville', serif;
+  --font-display: 'Cinzel', 'Playfair Display', 'Times New Roman', serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+
+  /* Палитра: "Архивный Пергамент" (Archival Ivory & Royal Oxford) */
+  --bg-desktop: #f4f0e6;
+  --paper-base: #fdfcf9;
+  --paper-card: #ffffff;
+  --paper-border: #e2dbcd;
+  --paper-border-dark: #c5bca9;
+  --paper-shadow: 0 10px 30px -5px rgba(60, 50, 30, 0.08), 0 4px 6px -2px rgba(60, 50, 30, 0.04);
+  
+  --ink-primary: #1a202c;
+  --ink-secondary: #4a5568;
+  --ink-muted: #718096;
+  --ink-faint: #a0aec0;
+
+  --oxford-blue: #1e3a8a;
+  --oxford-blue-hover: #172554;
+  --oxford-blue-light: #eff6ff;
+
+  --antique-gold: #b45309;
+  --antique-gold-light: #fef3c7;
+  --antique-gold-border: #fde68a;
+
+  --stamp-red: #b91c1c;
+  --stamp-red-light: #fef2f2;
+  --stamp-border: #dc2626;
+
+  --success-green: #15803d;
+  --success-green-bg: #f0fdf4;
+
+  --radius-subtle: 4px;
+  --radius-card: 8px;
+}
+
+[data-theme="dark"] {
+  /* Палитра: "Ночной Кабинет" (Midnight Study / Professor's Library) */
+  --bg-desktop: #0b0e14;
+  --paper-base: #121720;
+  --paper-card: #18202c;
+  --paper-border: #293548;
+  --paper-border-dark: #3b4d68;
+  --paper-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5), 0 5px 15px -3px rgba(0, 0, 0, 0.3);
+
+  --ink-primary: #ede8df;
+  --ink-secondary: #cbd5e1;
+  --ink-muted: #8899a6;
+  --ink-faint: #526070;
+
+  --oxford-blue: #3b82f6;
+  --oxford-blue-hover: #60a5fa;
+  --oxford-blue-light: rgba(59, 130, 246, 0.15);
+
+  --antique-gold: #d97706;
+  --antique-gold-light: rgba(217, 119, 6, 0.15);
+  --antique-gold-border: #b45309;
+
+  --stamp-red: #ef4444;
+  --stamp-red-light: rgba(239, 68, 68, 0.12);
+  --stamp-border: #f87171;
+
+  --success-green: #22c55e;
+  --success-green-bg: rgba(34, 197, 94, 0.12);
+}
+
+/* ==========================================================================
+   Base & Background Setup
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-desktop);
+  color: var(--ink-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  position: relative;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Текстура архивной бумаги с микро-сеткой */
+.academic-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+  background-image: 
+    radial-gradient(var(--paper-border) 0.75px, transparent 0.75px),
+    linear-gradient(to right, rgba(180, 160, 120, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px, 120px 120px;
+}
+
+/* ==========================================================================
+   Header: Academic Bureau Bar
+   ========================================================================== */
+
+.bureau-header {
+  position: relative;
+  z-index: 10;
+  background: var(--paper-base);
+  border-bottom: 2px solid var(--paper-border-dark);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.bureau-header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.bureau-emblem-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.bureau-seal {
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  color: var(--antique-gold);
+}
+
+.seal-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.seal-curve-text {
+  font-family: var(--font-display);
+  font-size: 6.5px;
+  letter-spacing: 1.2px;
+  fill: currentColor;
+}
+
+.seal-year {
+  font-family: var(--font-display);
+  font-size: 7.5px;
+  letter-spacing: 1.5px;
+  fill: currentColor;
+  font-weight: 700;
+}
+
+.bureau-ministry {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--antique-gold);
+  font-weight: 600;
+}
+
+.bureau-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink-primary);
+  line-height: 1.2;
+  letter-spacing: 0.5px;
+}
+
+.bureau-subtitle {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--ink-secondary);
+  font-style: italic;
+}
+
+.bureau-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Пилюли статуса источников файлов */
+.source-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--paper-card);
+  padding: 4px 10px;
+  border: 1px solid var(--paper-border);
+  border-radius: 20px;
+}
+
+.source-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--ink-secondary);
+  padding: 3px 6px;
+  cursor: default;
+}
+
+.pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success-green);
+  display: inline-block;
+  box-shadow: 0 0 6px var(--success-green);
+}
+
+.source-pill.pill-missing .pill-dot {
+  background: var(--stamp-red);
+  box-shadow: 0 0 6px var(--stamp-red);
+}
+
+.source-pill.pill-missing {
+  color: var(--stamp-red);
+}
+
+.header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-tool {
+  background: var(--paper-card);
+  border: 1px solid var(--paper-border);
+  border-radius: var(--radius-subtle);
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--ink-primary);
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.btn-tool:hover {
+  background: var(--paper-border);
+  border-color: var(--paper-border-dark);
+}
+
+[data-theme="light"] .theme-icon-sun { display: none; }
+[data-theme="light"] .theme-icon-moon { display: inline; }
+[data-theme="dark"] .theme-icon-sun { display: inline; }
+[data-theme="dark"] .theme-icon-moon { display: none; }
+
+/* ==========================================================================
+   Main Grid Layout
+   ========================================================================== */
+
+.bureau-main {
+  position: relative;
+  z-index: 5;
+  max-width: 1280px;
+  margin: 28px auto 40px auto;
+  padding: 0 24px;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr 440px;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   Academic Alert Banner
+   ========================================================================== */
+
+.academic-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: var(--paper-card);
+  border: 1px solid var(--antique-gold-border);
+  border-left: 5px solid var(--antique-gold);
+  padding: 14px 18px;
+  border-radius: var(--radius-subtle);
+  margin-bottom: 24px;
+  box-shadow: var(--paper-shadow);
+  transition: all 0.25s ease;
+}
+
+.academic-alert.hidden {
+  display: none;
+}
+
+.academic-alert.alert-error {
+  border-color: var(--stamp-border);
+  border-left-color: var(--stamp-red);
+}
+
+.alert-icon-box {
+  font-size: 22px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.alert-content-box {
+  flex: 1;
+}
+
+.alert-heading {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 2px;
+  color: var(--ink-primary);
+}
+
+.alert-desc {
+  font-size: 13px;
+  color: var(--ink-secondary);
+  line-height: 1.4;
+}
+
+.alert-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bureau-btn-icon {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+.bureau-btn-icon:hover {
+  color: var(--ink-primary);
+}
+
+/* ==========================================================================
+   Card: Dossier Card (Основная форма)
+   ========================================================================== */
+
+.dossier-card {
+  background: var(--paper-card);
+  border: 1px solid var(--paper-border);
+  border-top: 4px solid var(--oxford-blue);
+  border-radius: var(--radius-card);
+  box-shadow: var(--paper-shadow);
+  overflow: hidden;
+  position: relative;
+}
+
+.dossier-header {
+  padding: 24px 28px 18px 28px;
+  border-bottom: 1px dashed var(--paper-border);
+  background: var(--paper-base);
+}
+
+.dossier-tag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--antique-gold);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.dossier-title {
+  font-family: var(--font-serif);
+  font-size: 25px;
+  font-weight: 700;
+  color: var(--ink-primary);
+  line-height: 1.25;
+}
+
+.dossier-prompt {
+  font-size: 13.5px;
+  color: var(--ink-secondary);
+  margin-top: 6px;
+}
+
+.dossier-body {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* Поля формы */
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink-primary);
+}
+
+.field-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--paper-base);
+  border: 1px solid var(--paper-border-dark);
+  padding: 1px 6px;
+  border-radius: var(--radius-subtle);
+  color: var(--antique-gold);
+}
+
+.academic-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.academic-select {
+  width: 100%;
+  appearance: none;
+  background: var(--paper-base);
+  border: 1.5px solid var(--paper-border-dark);
+  border-radius: var(--radius-subtle);
+  padding: 12px 75px 12px 14px;
+  font-size: 15px;
+  font-family: var(--font-sans);
+  color: var(--ink-primary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.academic-select:focus {
+  outline: none;
+  border-color: var(--oxford-blue);
+  box-shadow: 0 0 0 3px var(--oxford-blue-light);
+}
+
+.academic-select:disabled {
+  opacity: 0.6;
+  background: var(--bg-desktop);
+  cursor: not-allowed;
+}
+
+.academic-select-badge {
+  position: absolute;
+  right: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--ink-muted);
+  background: var(--paper-card);
+  border: 1px solid var(--paper-border);
+  padding: 2px 6px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.dossier-warning-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--antique-gold-light);
+  border: 1px solid var(--antique-gold-border);
+  border-radius: var(--radius-subtle);
+  font-size: 13px;
+  color: var(--antique-gold);
+  margin-top: 4px;
+}
+
+.dossier-warning-hint.hidden {
+  display: none;
+}
+
+/* Кнопка генерации */
+.dossier-actions {
+  margin-top: 6px;
+}
+
+.bureau-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  border-radius: var(--radius-subtle);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+  border: 1.5px solid transparent;
+}
+
+.bureau-btn-lg {
+  width: 100%;
+  padding: 16px 24px;
+  font-size: 16px;
+  letter-spacing: 0.3px;
+}
+
+.bureau-btn-sm {
+  padding: 6px 12px;
+  font-size: 12.5px;
+}
+
+.bureau-btn-primary {
+  background: var(--oxford-blue);
+  color: #ffffff;
+  border-color: var(--oxford-blue);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+}
+
+.bureau-btn-primary:hover:not(:disabled) {
+  background: var(--oxford-blue-hover);
+  border-color: var(--oxford-blue-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.35);
+}
+
+.bureau-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.bureau-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.bureau-btn-secondary {
+  background: var(--paper-base);
+  color: var(--ink-primary);
+  border-color: var(--paper-border-dark);
+}
+
+.bureau-btn-secondary:hover {
+  background: var(--paper-border);
+}
+
+.bureau-btn-ghost {
+  background: transparent;
+  color: var(--ink-secondary);
+  border-color: var(--paper-border);
+}
+
+.bureau-btn-ghost:hover {
+  color: var(--ink-primary);
+  background: var(--paper-base);
+}
+
+.bureau-btn-warn {
+  background: var(--antique-gold);
+  color: #ffffff;
+}
+
+.bureau-btn-warn:hover {
+  background: #92400e;
+}
+
+.btn-key-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0.75;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.bureau-btn-secondary .btn-key-hint {
+  background: var(--paper-border);
+  color: var(--ink-secondary);
+}
+
+/* Подвал досье: статус и шорткаты */
+.dossier-footer {
+  padding: 16px 28px;
+  background: var(--paper-base);
+  border-top: 1px solid var(--paper-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.status-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.academic-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.dot-idle { background: var(--antique-gold); box-shadow: 0 0 6px var(--antique-gold); }
+.dot-ready { background: var(--success-green); box-shadow: 0 0 6px var(--success-green); }
+.dot-error { background: var(--stamp-red); box-shadow: 0 0 6px var(--stamp-red); }
+
+.status-msg {
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: var(--ink-secondary);
+}
+
+.shortcuts-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kbd-pill {
+  font-size: 11px;
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+kbd {
+  font-family: var(--font-mono);
+  background: var(--paper-card);
+  border: 1px solid var(--paper-border-dark);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-primary);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+/* ==========================================================================
+   Card: Archive Ledger Card (Архивный журнал)
+   ========================================================================== */
+
+.archive-card {
+  background: var(--paper-card);
+  border: 1px solid var(--paper-border);
+  border-top: 4px solid var(--antique-gold);
+  border-radius: var(--radius-card);
+  box-shadow: var(--paper-shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.archive-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--paper-border);
+  background: var(--paper-base);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.archive-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.archive-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.archive-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink-primary);
+  line-height: 1.2;
+}
+
+.archive-meta {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
+}
+
+.archive-search-bar {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--paper-border);
+  background: var(--paper-card);
+}
+
+.archive-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  border: 1px solid var(--paper-border);
+  border-radius: var(--radius-subtle);
+  background: var(--paper-base);
+  color: var(--ink-primary);
+}
+
+.archive-search-input:focus {
+  outline: none;
+  border-color: var(--oxford-blue);
+}
+
+.archive-table-wrap {
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.archive-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.archive-table th {
+  background: var(--paper-base);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--paper-border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.archive-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--paper-border);
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+}
+
+.archive-table tr:hover {
+  background: var(--paper-base);
+}
+
+.table-empty {
+  text-align: center;
+  color: var(--ink-muted);
+  font-style: italic;
+  padding: 24px !important;
+}
+
+.status-badge-initial {
+  background: var(--success-green-bg);
+  color: var(--success-green);
+  border: 1px solid var(--success-green);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+.status-badge-repeat {
+  background: var(--stamp-red-light);
+  color: var(--stamp-red);
+  border: 1px solid var(--stamp-border);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   MODAL DIALOG: AUTHENTIC PHYSICAL EXAMINATION TICKET
+   ========================================================================== */
+
+.bureau-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.bureau-modal-overlay.hidden {
+  display: none !important;
+}
+
+.bureau-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 1;
+}
+
+.bureau-modal-container {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: ticketSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ticketSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Физический билет строгой отчётности */
+.authentic-ticket-doc {
+  background: #fdfbf7;
+  color: #1a202c;
+  border: 2px solid #b8a892;
+  border-radius: 4px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Текстура водяного знака герба внутри билета */
+.ticket-guilloche-border {
+  padding: 24px 30px;
+  border: 1px solid #d4c7b2;
+  margin: 6px;
+  position: relative;
+  background-image: 
+    radial-gradient(#e5dbc9 0.5px, transparent 0.5px),
+    linear-gradient(rgba(240, 230, 215, 0.4) 1px, transparent 1px);
+  background-size: 16px 16px, 100% 24px;
+}
+
+.ticket-doc-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  position: relative;
+  padding-bottom: 14px;
+}
+
+.ticket-state-emblem {
+  width: 58px;
+  height: 58px;
+  flex-shrink: 0;
+  color: #78350f;
+}
+
+.ticket-emblem-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ticket-official-headings {
+  flex: 1;
+}
+
+.ticket-sup-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #78350f;
+  font-weight: 600;
+}
+
+.ticket-sub-title {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #4a5568;
+  margin-top: 1px;
+}
+
+.ticket-main-title {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  line-height: 1.15;
+}
+
+.ticket-doc-code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #718096;
+  letter-spacing: 1.2px;
+  margin-top: 4px;
+}
+
+/* Штамп: ПОВТОРНАЯ ВЫДАЧА • ДУБЛИКАТ */
+.rubber-stamp-duplicate {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: rotate(-10deg);
+  border: 3px double #b91c1c;
+  background: rgba(254, 242, 242, 0.92);
+  padding: 6px 14px;
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(185, 28, 28, 0.15);
+  pointer-events: none;
+  animation: stampSlam 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes stampSlam {
+  0% { transform: scale(1.6) rotate(-25deg); opacity: 0; }
+  100% { transform: scale(1) rotate(-10deg); opacity: 1; }
+}
+
+.rubber-stamp-duplicate.hidden {
+  display: none !important;
+}
+
+.stamp-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stamp-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  color: #b91c1c;
+  line-height: 1;
+}
+
+.stamp-desc {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #991b1b;
+  margin-top: 2px;
+}
+
+.stamp-meta {
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  letter-spacing: 1px;
+  color: #b91c1c;
+  margin-top: 1px;
+}
+
+/* Перфорированная линия отрыва билета */
+.perforated-tear-line {
+  position: relative;
+  margin: 12px -30px 18px -30px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.tear-dashes {
+  flex: 1;
+  height: 0;
+  border-top: 2px dashed #b8a892;
+}
+
+.notch {
+  width: 14px;
+  height: 14px;
+  background: rgba(15, 23, 42, 0.75);
+  border-radius: 50%;
+  position: absolute;
+  top: 1px;
+}
+
+.notch-left { left: -7px; }
+.notch-right { right: -7px; }
+
+/* Метаданные студента */
+.ticket-student-section {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e2dbcd;
+}
+
+.ticket-meta-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .ticket-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.meta-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-field-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #78350f;
+  letter-spacing: 1px;
+}
+
+.meta-field-val {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a202c;
+}
+
+/* Вопросы экзаменационной программы */
+.ticket-questions-section {
+  padding: 16px 0;
+}
+
+.questions-headline {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #78350f;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.questions-numbered-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.question-card {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #dcd3c2;
+  border-left: 4px solid var(--oxford-blue);
+  padding: 12px 16px;
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.question-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--oxford-blue);
+  text-transform: uppercase;
+}
+
+.question-text {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  color: #1a202c;
+  line-height: 1.45;
+}
+
+/* Подвал билета: подписи и штрихкод */
+.ticket-doc-footer {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e2dbcd;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ticket-signature-grid {
+  display: grid;
+  grid-template-columns: 1fr 140px 1fr;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+@media (max-width: 600px) {
+  .ticket-signature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sig-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sig-line {
+  border-bottom: 1px solid #718096;
+  height: 20px;
+}
+
+.sig-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #718096;
+  text-align: center;
+}
+
+.sig-grade-box {
+  border: 1px dashed #78350f;
+  padding: 6px 10px;
+  text-align: center;
+  background: rgba(254, 243, 199, 0.4);
+}
+
+.grade-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #78350f;
+}
+
+.grade-line {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #78350f;
+}
+
+.ticket-security-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px dashed #e2dbcd;
+}
+
+.barcode-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 20px;
+}
+
+.b-line {
+  background: #1a202c;
+  height: 100%;
+  display: inline-block;
+}
+
+.w1 { width: 1.5px; }
+.w2 { width: 2.5px; }
+.w3 { width: 3.5px; }
+.w4 { width: 5px; }
+
+.security-hash {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 1.5px;
+  color: #718096;
+}
+
+/* Панель управления модальным окном */
+.modal-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-kbd-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+.bureau-btn-secondary .btn-kbd-badge {
+  background: var(--paper-border-dark);
+  color: var(--ink-primary);
+}
+
+/* ==========================================================================
+   PRINT STYLESHEET (Официальная печать на бланке A4)
+   ========================================================================== */
+
+@media print {
+  /* Скрываем всё лишнее веб-окружение */
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt;
+  }
+
+  .academic-bg,
+  .bureau-header,
+  .bureau-main,
+  .bureau-modal-backdrop,
+  .modal-control-bar,
+  .shortcuts-legend {
+    display: none !important;
+  }
+
+  .bureau-modal-overlay {
+    position: static !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .bureau-modal-container {
+    max-width: 100% !important;
+  }
+
+  .authentic-ticket-doc {
+    box-shadow: none !important;
+    border: 2px solid #000000 !important;
+    page-break-inside: avoid;
+    width: 100% !important;
+  }
+
+  .ticket-guilloche-border {
+    margin: 0 !important;
+    border: 1px solid #000000 !important;
+    background-image: none !important;
+  }
+
+  .rubber-stamp-duplicate {
+    border-color: #990000 !important;
+    color: #990000 !important;
+  }
+
+  .question-card {
+    border: 1px solid #666666 !important;
+    border-left: 4px solid #000000 !important;
+    page-break-inside: avoid;
+  }
+
+  .notch {
+    display: none !important;
+  }
+}

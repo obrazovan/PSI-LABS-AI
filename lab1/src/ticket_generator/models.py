@@ -5,7 +5,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
 
 
 @dataclass
@@ -16,7 +15,7 @@ class StudentRecord:
     Attributes:
         last_name: Фамилия студента (строка, пробелы по краям удаляются).
         first_name: Имя студента (строка, пробелы по краям удаляются).
-        ticket_number: Номер экзаменационного билета (1..20).
+        ticket_number: Номер экзаменационного билета (положительное целое число).
         timestamp: Дата и время формирования записи (строка формата 'YYYY-MM-DD HH:MM:SS').
     """
 
@@ -44,7 +43,3 @@ class StudentRecord:
             raise TypeError("Номер билета должен быть целым числом")
         if self.ticket_number <= 0:
             raise ValueError("Номер билета должен быть положительным числом")
-
-    def to_row(self) -> list[Any]:
-        """Возвращает строку таблицы для записи в Excel."""
-        return [self.last_name, self.first_name, self.ticket_number, self.timestamp]

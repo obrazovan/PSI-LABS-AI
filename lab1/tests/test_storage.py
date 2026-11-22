@@ -7,15 +7,36 @@ from unittest.mock import patch, MagicMock
 import pytest
 import openpyxl
 
+from ticket_generator.ports import JournalReader, JournalStorage, JournalWriter, StorageError
 from ticket_generator.storage import (
     ExcelJournalStorage,
     HEADER_ROW,
     FileLockedError,
+    StudentRecordRowMapper,
 )
 from ticket_generator.models import StudentRecord
 
 
+class TestStudentRecordRowMapper:
+    def test_to_row(self):
+        mapper = StudentRecordRowMapper()
+        record = StudentRecord(
+            last_name="Сидоров",
+            first_name="Олег",
+            ticket_number=18,
+            timestamp="2026-11-04 15:30:00",
+        )
+        assert list(mapper.headers) == HEADER_ROW
+        assert mapper.to_row(record) == ["Сидоров", "Олег", 18, "2026-11-04 15:30:00"]
+
+
 class TestExcelJournalStorage:
+    def test_implements_segregated_protocols(self, tmp_excel_path: Path):
+        storage = ExcelJournalStorage(tmp_excel_path)
+        assert isinstance(storage, JournalWriter)
+        assert isinstance(storage, JournalReader)
+        assert isinstance(storage, JournalStorage)
+
     def test_initialization_creates_file_with_headers(self, tmp_excel_path: Path):
         storage = ExcelJournalStorage(tmp_excel_path)
         assert not tmp_excel_path.exists()
@@ -30,6 +51,7 @@ class TestExcelJournalStorage:
 
     def test_append_record_creates_file_if_not_exists(self, tmp_excel_path: Path, sample_record: StudentRecord):
         storage = ExcelJournalStorage(tmp_excel_path)
+        mapper = StudentRecordRowMapper()
         assert not tmp_excel_path.exists()
 
         storage.append_record(sample_record)
@@ -38,11 +60,12 @@ class TestExcelJournalStorage:
         rows = storage.read_all_rows()
         assert len(rows) == 2
         assert list(rows[0]) == HEADER_ROW
-        assert list(rows[1]) == sample_record.to_row()
+        assert list(rows[1]) == mapper.to_row(sample_record)
         assert storage.get_records_count() == 1
 
     def test_append_multiple_records_preserves_order_and_data(self, tmp_excel_path: Path):
         storage = ExcelJournalStorage(tmp_excel_path)
+        mapper = StudentRecordRowMapper()
 
         rec1 = StudentRecord("Иванов", "Иван", 5, "2026-11-04 10:00:00")
         rec2 = StudentRecord("Петров", "Петр", 12, "2026-11-04 10:05:00")
@@ -55,9 +78,9 @@ class TestExcelJournalStorage:
         rows = storage.read_all_rows()
         assert len(rows) == 4
         assert list(rows[0]) == HEADER_ROW
-        assert list(rows[1]) == rec1.to_row()
-        assert list(rows[2]) == rec2.to_row()
-        assert list(rows[3]) == rec3.to_row()
+        assert list(rows[1]) == mapper.to_row(rec1)
+        assert list(rows[2]) == mapper.to_row(rec2)
+        assert list(rows[3]) == mapper.to_row(rec3)
         assert storage.get_records_count() == 3
 
     def test_persistence_between_sessions(self, tmp_excel_path: Path):
@@ -128,3 +151,42 @@ class TestExcelJournalStorage:
         with patch.object(openpyxl.Workbook, "save", side_effect=PermissionError(13, "File locked")):
             with pytest.raises(FileLockedError, match="заблокирован"):
                 storage.append_record(sample_record)
+
+    def test_default_storage_without_lock_handler_raises_storage_error_without_stdin(
+        self, tmp_excel_path: Path, sample_record: StudentRecord
+    ):
+        """Без обработчика блокировки хранилище не обращается к stdin и сразу выбрасывает FileLockedError."""
+        storage = ExcelJournalStorage(tmp_excel_path)
+
+        with patch.object(openpyxl.Workbook, "save", side_effect=PermissionError(13, "File locked")):
+            with pytest.raises(StorageError, match="заблокирован"):
+                storage.append_record(sample_record)
+
+    def test_custom_mapper_and_styler_injection(self, tmp_excel_path: Path, sample_record: StudentRecord):
+        """Проверка OCP: можно подменить маппер колонок и стилизатор без правки хранилища."""
+        class CustomMapper:
+            headers = ("ФИО", "Билет")
+
+            def to_row(self, record: StudentRecord):
+                return [f"{record.last_name} {record.first_name}", record.ticket_number]
+
+        styled_calls: list[tuple[str, int]] = []
+
+        class SpyStyler:
+            def style_header(self, ws, column_count: int) -> None:
+                styled_calls.append(("header", column_count))
+
+            def style_data_row(self, ws, row_index: int) -> None:
+                styled_calls.append(("row", row_index))
+
+        storage = ExcelJournalStorage(
+            tmp_excel_path,
+            mapper=CustomMapper(),
+            styler=SpyStyler(),
+        )
+        storage.append_record(sample_record)
+
+        rows = storage.read_all_rows()
+        assert list(rows[0]) == ["ФИО", "Билет"]
+        assert list(rows[1]) == ["Иванов Иван", 7]
+        assert styled_calls == [("header", 2), ("row", 2)]

@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from ticket_generator.app import TicketApp
+from ticket_generator.ports import JournalWriter, StorageError
 from ticket_generator.storage import ExcelJournalStorage, HEADER_ROW
 from ticket_generator.generator import FixedTicketGenerator
 from ticket_generator.models import StudentRecord
@@ -200,3 +201,69 @@ class TestTicketAppWorkflow:
 
         # Запись не должна быть сохранена
         assert storage.get_records_count() == 0
+
+    def test_works_with_minimal_journal_writer_abstraction(self, mock_console_factory):
+        """Проверка ISP и DIP: TicketApp требует только JournalWriter (без file_path и методов чтения)."""
+        class InMemoryJournalWriter:
+            def __init__(self) -> None:
+                self.initialized = False
+                self.records: list[StudentRecord] = []
+
+            def ensure_initialized(self) -> None:
+                self.initialized = True
+
+            def append_record(self, record: StudentRecord) -> None:
+                self.records.append(record)
+
+        writer = InMemoryJournalWriter()
+        assert isinstance(writer, JournalWriter)
+
+        console = mock_console_factory(["Орлов", "Денис", None])
+        app = TicketApp(
+            storage=writer,
+            generator=FixedTicketGenerator([11]),
+            console=console,
+            storage_description="Хранилище: в памяти",
+        )
+        exit_code = app.run()
+
+        assert exit_code == 0
+        assert writer.initialized is True
+        assert len(writer.records) == 1
+        assert writer.records[0].last_name == "Орлов"
+        assert writer.records[0].ticket_number == 11
+        assert "Хранилище: в памяти\n" in console.output_messages
+
+    def test_handles_abstract_storage_error_gracefully(self, mock_console_factory):
+        """Проверка DIP: TicketApp обрабатывает абстрактный StorageError без привязки к Excel."""
+        class FailingInitWriter:
+            def ensure_initialized(self) -> None:
+                raise StorageError("Недоступно хранилище")
+
+            def append_record(self, record: StudentRecord) -> None:
+                pass
+
+        console = mock_console_factory([])
+        app = TicketApp(
+            storage=FailingInitWriter(),
+            generator=FixedTicketGenerator([1]),
+            console=console,
+        )
+        assert app.run() == 1
+        assert any("Ошибка при инициализации" in msg for msg in console.output_messages)
+
+        class FailingAppendWriter:
+            def ensure_initialized(self) -> None:
+                pass
+
+            def append_record(self, record: StudentRecord) -> None:
+                raise StorageError("Ошибка записи")
+
+        console2 = mock_console_factory(["Иванов", "Иван", None])
+        app2 = TicketApp(
+            storage=FailingAppendWriter(),
+            generator=FixedTicketGenerator([4]),
+            console=console2,
+        )
+        assert app2.run() == 0
+        assert any("[Ошибка сохранения]" in msg for msg in console2.output_messages)

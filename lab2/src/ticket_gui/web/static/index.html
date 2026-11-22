@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Экзаменационная комиссия — Генератор билетов (Web Edition)</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Декоративная академическая сетка и текстура бумаги -->
+  <div class="academic-bg"></div>
+
+  <!-- Верхняя академическая панель -->
+  <header class="bureau-header">
+    <div class="bureau-header-inner">
+      <div class="bureau-emblem-wrap">
+        <div class="bureau-seal">
+          <svg viewBox="0 0 100 100" class="seal-svg" aria-hidden="true">
+            <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2" />
+            <circle cx="50" cy="50" r="41" fill="none" stroke="currentColor" stroke-width="1.2" />
+            <path id="seal-curve" d="M 20 50 A 30 30 0 1 1 80 50" fill="none" />
+            <text class="seal-curve-text">
+              <textPath href="#seal-curve" startOffset="50%" text-anchor="middle">EXAMINA • ORDO • VERITAS</textPath>
+            </text>
+            <polygon points="50,22 53,32 63,32 55,38 58,48 50,42 42,48 45,38 37,32 47,32" fill="currentColor" opacity="0.9"/>
+            <text x="50" y="68" text-anchor="middle" class="seal-year">MMXXVI</text>
+          </svg>
+        </div>
+        <div class="bureau-title-block">
+          <div class="bureau-ministry">Государственная Академическая Комиссия</div>
+          <h1 class="bureau-title">Бюро Экзаменационных Билетов</h1>
+          <div class="bureau-subtitle">Автоматизированное распределение бланков строгой отчётности</div>
+        </div>
+      </div>
+
+      <div class="bureau-controls">
+        <!-- Индикаторы источников файлов -->
+        <div class="source-pills" id="sourcePills">
+          <div class="source-pill" id="pillStudents" title="Файл students.xlsx">
+            <span class="pill-dot"></span>
+            <span class="pill-label">Студенты</span>
+          </div>
+          <div class="source-pill" id="pillTickets" title="Файл tickets.docx">
+            <span class="pill-dot"></span>
+            <span class="pill-label">Билеты</span>
+          </div>
+          <div class="source-pill" id="pillResults" title="Файл results.xlsx">
+            <span class="pill-dot"></span>
+            <span class="pill-label">Журнал</span>
+          </div>
+        </div>
+
+        <!-- Переключатели темы и звука -->
+        <div class="header-buttons">
+          <button id="soundToggle" class="btn-tool" aria-label="Звуковые эффекты" title="Переключить тактильный звук (M)">
+            <span id="soundIcon">🔊</span>
+          </button>
+          <button id="themeToggle" class="btn-tool" aria-label="Переключить тему оформления" title="Сменить оформление: Архивный пергамент / Ночной кабинет (D)">
+            <span class="theme-icon-sun">☀️</span>
+            <span class="theme-icon-moon">🌙</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Основная рабочая область -->
+  <main class="bureau-main">
+    <!-- Баннер системных оповещений (ошибки/блокировки) -->
+    <div id="alertBanner" class="academic-alert hidden" role="alert">
+      <div class="alert-border-left"></div>
+      <div class="alert-icon-box" id="alertIcon">⚠️</div>
+      <div class="alert-content-box">
+        <h4 id="alertTitle" class="alert-heading">Уведомление системы</h4>
+        <p id="alertMessage" class="alert-desc"></p>
+      </div>
+      <div class="alert-actions">
+        <button id="alertRetryBtn" class="bureau-btn bureau-btn-sm bureau-btn-warn hidden">Повторить попытку</button>
+        <button id="alertCloseBtn" class="bureau-btn-icon" aria-label="Закрыть">&times;</button>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <!-- Главная консоль распределения (Форма) -->
+      <section class="dossier-card">
+        <div class="dossier-header">
+          <div class="dossier-tag">РЕГЛАМЕНТ СЕССИИ • ЛАБОРАТОРНАЯ РАБОТА №2</div>
+          <h2 class="dossier-title">Назначение Экзаменационного Билета</h2>
+          <p class="dossier-prompt">
+            Выберите академическую группу и экзаменуемого студента для формирования официального билета.
+          </p>
+        </div>
+
+        <form id="ticketForm" class="dossier-body" onsubmit="return false;">
+          <!-- Шаг 1: Выбор группы -->
+          <div class="field-block">
+            <label for="groupSelect" class="field-label">
+              <span class="field-num">§ 1</span>
+              <span class="field-caption">Академическая группа:</span>
+            </label>
+            <div class="academic-select-wrap">
+              <select id="groupSelect" class="academic-select" required>
+                <option value="" disabled selected>— Загрузка реестра групп... —</option>
+              </select>
+              <div class="academic-select-badge">ГРУППА</div>
+            </div>
+          </div>
+
+          <!-- Шаг 2: Выбор студента -->
+          <div class="field-block">
+            <label for="studentSelect" class="field-label">
+              <span class="field-num">§ 2</span>
+              <span class="field-caption">Экзаменуемый студент:</span>
+            </label>
+            <div class="academic-select-wrap">
+              <select id="studentSelect" class="academic-select" disabled required>
+                <option value="" disabled selected>— Сначала выберите группу в § 1 —</option>
+              </select>
+              <div class="academic-select-badge">ФИО</div>
+            </div>
+            <div id="emptyGroupNote" class="dossier-warning-hint hidden">
+              <span class="hint-icon">⚖️</span>
+              <span class="hint-text">Внимание: В выбранной группе нет зарегистрированных студентов (список пуст).</span>
+            </div>
+          </div>
+
+          <!-- Кнопка вызова/генерации билета -->
+          <div class="dossier-actions">
+            <button id="generateBtn" type="button" class="bureau-btn bureau-btn-primary bureau-btn-lg" disabled>
+              <span class="btn-emboss-icon">📜</span>
+              <span class="btn-text">Сформировать и выдать билет</span>
+              <span class="btn-key-hint">[Enter]</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Статусная строка и горячие клавиши -->
+        <div class="dossier-footer">
+          <div class="status-box">
+            <span id="statusDot" class="academic-dot dot-idle"></span>
+            <span id="statusText" class="status-msg">Инициализация экзаменационного бюро...</span>
+          </div>
+          <div class="shortcuts-legend">
+            <span class="kbd-pill"><kbd>1</kbd> Группа</span>
+            <span class="kbd-pill"><kbd>2</kbd> Студент</span>
+            <span class="kbd-pill"><kbd>Enter</kbd> Выдать</span>
+            <span class="kbd-pill"><kbd>Esc</kbd> Закрыть</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Боковая архивная выписка (Журнал результатов) -->
+      <section class="archive-card">
+        <div class="archive-header">
+          <div class="archive-title-wrap">
+            <span class="archive-icon">🗄️</span>
+            <div>
+              <h3 class="archive-title">Архивный Реестр Выдач</h3>
+              <div class="archive-meta" id="archiveMeta">Синхронизировано с results.xlsx</div>
+            </div>
+          </div>
+          <button id="refreshHistoryBtn" class="bureau-btn-sm bureau-btn-ghost" title="Обновить журнал">
+            <span>⟳</span> Обновить
+          </button>
+        </div>
+
+        <div class="archive-search-bar">
+          <input type="text" id="historySearchInput" class="archive-search-input" placeholder="Поиск по фамилии или группе..." aria-label="Поиск по журналу">
+        </div>
+
+        <div class="archive-table-wrap">
+          <table class="archive-table">
+            <thead>
+              <tr>
+                <th>Группа</th>
+                <th>Студент</th>
+                <th>Билет</th>
+                <th>Время</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody id="historyTbody">
+              <tr>
+                <td colspan="5" class="table-empty">Загрузка реестра записей...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- МОДАЛЬНОЕ ОКНО: Физический экзаменационный билет строгой отчётности -->
+  <div id="resultModal" class="bureau-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modalTicketNumber">
+    <div class="bureau-modal-backdrop"></div>
+    <div class="bureau-modal-container">
+      
+      <!-- Физический экзаменационный билет -->
+      <article class="authentic-ticket-doc" id="printableTicketDoc">
+        
+        <!-- Защитная рамка с гильошированным орнаментом -->
+        <div class="ticket-guilloche-border">
+          
+          <!-- Шапка билета строгой отчетности -->
+          <header class="ticket-doc-header">
+            <div class="ticket-state-emblem">
+              <svg viewBox="0 0 80 80" class="ticket-emblem-svg">
+                <circle cx="40" cy="40" r="36" fill="none" stroke="currentColor" stroke-width="1.5" />
+                <circle cx="40" cy="40" r="32" fill="none" stroke="currentColor" stroke-width="0.75" stroke-dasharray="2 1" />
+                <path d="M 40 12 L 43 28 L 59 28 L 46 38 L 51 54 L 40 44 L 29 54 L 34 38 L 21 28 L 37 28 Z" fill="currentColor" opacity="0.85"/>
+                <text x="40" y="66" text-anchor="middle" font-size="7" font-family="serif" letter-spacing="1">ЭКЗАМЕН</text>
+              </svg>
+            </div>
+            
+            <div class="ticket-official-headings">
+              <div class="ticket-sup-title">МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ</div>
+              <div class="ticket-sub-title">КАФЕДРА ПРОГРАММНЫХ СИСТЕМ И ИНСТРУМЕНТОВ</div>
+              <h2 id="modalTicketNumber" class="ticket-main-title">Ваш билет № —</h2>
+              <div class="ticket-doc-code">БЛАНК СТРОГОЙ ОТЧЁТНОСТИ • СЕРИЯ ЭК-2026</div>
+            </div>
+
+            <!-- Штамп повторной выдачи (при повторе) -->
+            <div id="modalRepeatBanner" class="rubber-stamp-duplicate hidden" aria-label="Повторная выдача">
+              <div class="stamp-inner">
+                <span class="stamp-title">ДУБЛИКАТ</span>
+                <span class="stamp-desc">ПОВТОРНАЯ ВЫДАЧА</span>
+                <span class="stamp-meta">БИЛЕТ ПОДТВЕРЖДЁН</span>
+              </div>
+            </div>
+          </header>
+
+          <!-- Линия перфорации с вырезами отрывного корешка -->
+          <div class="perforated-tear-line">
+            <div class="notch notch-left"></div>
+            <div class="tear-dashes"></div>
+            <div class="notch notch-right"></div>
+          </div>
+
+          <!-- Сведения об экзаменуемом -->
+          <section class="ticket-student-section">
+            <div class="ticket-meta-grid">
+              <div class="meta-field">
+                <span class="meta-field-label">ЭКЗАМЕНУЕМЫЙ:</span>
+                <span id="modalStudentName" class="meta-field-val">Студент: —</span>
+              </div>
+              <div class="meta-field">
+                <span class="meta-field-label">УЧЕБНАЯ ГРУППА:</span>
+                <span id="modalStudentGroup" class="meta-field-val">Группа: —</span>
+              </div>
+              <div class="meta-field">
+                <span class="meta-field-label">ДАТА И ВРЕМЯ ВЫДАЧИ:</span>
+                <span id="modalIssuedTime" class="meta-field-val">—</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Вопросы экзаменационного билета -->
+          <section class="ticket-questions-section">
+            <div class="questions-headline">ВОПРОСЫ ЭКЗАМЕНАЦИОННОЙ ПРОГРАММЫ:</div>
+            <div id="modalQuestionsList" class="questions-numbered-list">
+              <!-- Заполняется динамически -->
+            </div>
+          </section>
+
+          <!-- Поле для письменных ответов и подписи экзаменатора (для печати) -->
+          <footer class="ticket-doc-footer">
+            <div class="ticket-signature-grid">
+              <div class="sig-block">
+                <div class="sig-line"></div>
+                <div class="sig-label">Подпись экзаменуемого</div>
+              </div>
+              <div class="sig-grade-box">
+                <div class="grade-label">ОЦЕНКА:</div>
+                <div class="grade-line">____________</div>
+              </div>
+              <div class="sig-block">
+                <div class="sig-line"></div>
+                <div class="sig-label">Подпись экзаменатора / Председателя комиссии</div>
+              </div>
+            </div>
+
+            <!-- Штрихкод и защитная полоса -->
+            <div class="ticket-security-bar">
+              <div class="barcode-strip" aria-hidden="true">
+                <span class="b-line w1"></span><span class="b-line w3"></span><span class="b-line w2"></span>
+                <span class="b-line w4"></span><span class="b-line w1"></span><span class="b-line w2"></span>
+                <span class="b-line w1"></span><span class="b-line w4"></span><span class="b-line w3"></span>
+                <span class="b-line w2"></span><span class="b-line w1"></span><span class="b-line w3"></span>
+                <span class="b-line w4"></span><span class="b-line w1"></span><span class="b-line w2"></span>
+              </div>
+              <div class="security-hash" id="ticketSecurityHash">EXAM-HASH-VALID-0x88F2</div>
+            </div>
+          </footer>
+
+        </div>
+      </article>
+
+      <!-- Панель действий модального окна (Печать / Закрыть) -->
+      <div class="modal-control-bar">
+        <button id="modalPrintBtn" type="button" class="bureau-btn bureau-btn-secondary" title="Распечатать официальный бланк билета (P)">
+          <span class="btn-icon">🖨️</span>
+          <span>Распечатать билет</span>
+          <span class="btn-kbd-badge">[P]</span>
+        </button>
+        <button id="modalCloseBtn" type="button" class="bureau-btn bureau-btn-primary" title="Вернуться к выбору студентов (Esc)">
+          <span>Завершить просмотр</span>
+          <span class="btn-kbd-badge">[Esc]</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

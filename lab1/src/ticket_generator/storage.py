@@ -3,66 +3,108 @@
 """
 
 from __future__ import annotations
-import os
-import sys
+
 from pathlib import Path
-from typing import Callable, Sequence, Any
+from typing import Any, Protocol, Sequence
+
 import openpyxl
-from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils.exceptions import InvalidFileException
+from openpyxl.worksheet.worksheet import Worksheet
 
 from .models import StudentRecord
-
+from .ports import LockRetryHandler, RecordRowMapper, StorageLockedError
 
 HEADER_ROW = ["Last name", "First name", "Номер билета", "Дата и время"]
 
 
-class FileLockedError(OSError):
+class FileLockedError(StorageLockedError, OSError):
     """Исключение, сигнализирующее о том, что файл заблокирован другим процессом."""
-    pass
 
 
-def default_lock_handler(file_path: Path, exception: Exception) -> bool:
-    """
-    Обработчик блокировки файла по умолчанию для консольного режима.
-    Информирует пользователя и ожидает закрытия файла.
-    Возвращает True для повтора, False для отмены.
-    """
-    msg = (
-        f"\n[ВНИМАНИЕ] Файл '{file_path.name}' открыт в Excel или заблокирован другой программой.\n"
-        f"Пожалуйста, закройте файл в Excel и нажмите Enter для повторной попытки сохранения.\n"
-        f"(Или введите 'exit'/'q' и нажмите Enter для отмены): "
-    )
-    sys.stdout.write(msg)
-    sys.stdout.flush()
+class StudentRecordRowMapper:
+    """Преобразует запись студента в табличную строку и задает заголовки колонок."""
 
-    try:
-        response = sys.stdin.readline().strip().lower()
-        if response in ("exit", "q", "quit"):
-            return False
-        return True
-    except (KeyboardInterrupt, EOFError):
-        return False
+    def __init__(self, headers: Sequence[str] = HEADER_ROW) -> None:
+        self._headers = tuple(headers)
+
+    @property
+    def headers(self) -> tuple[str, ...]:
+        """Возвращает заголовки колонок таблицы."""
+        return self._headers
+
+    def to_row(self, record: StudentRecord) -> list[Any]:
+        """Возвращает строку таблицы для записи в журнал."""
+        return [record.last_name, record.first_name, record.ticket_number, record.timestamp]
+
+
+class ExcelSheetStyler(Protocol):
+    """Интерфейс оформления листа Excel."""
+
+    def style_header(self, ws: Worksheet, column_count: int) -> None:
+        """Оформляет шапку таблицы и ширину столбцов."""
+        ...
+
+    def style_data_row(self, ws: Worksheet, row_index: int) -> None:
+        """Оформляет добавленную строку данных."""
+        ...
+
+
+class DefaultExcelSheetStyler:
+    """Стандартное визуальное оформление листа Excel для журнала экзамена."""
+
+    def __init__(self, column_widths: dict[str, int] | None = None) -> None:
+        self._column_widths = column_widths or {"A": 20, "B": 20, "C": 16, "D": 22}
+        self._header_font = Font(name="Calibri", size=11, bold=True, color="000000")
+        self._header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+        self._header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        self._left_align = Alignment(horizontal="left", vertical="center")
+        self._center_align = Alignment(horizontal="center", vertical="center")
+
+    def style_header(self, ws: Worksheet, column_count: int) -> None:
+        """Применяет шрифт, заливку, выравнивание к шапке и задает ширину колонок."""
+        for col_idx in range(1, column_count + 1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.font = self._header_font
+            cell.fill = self._header_fill
+            cell.alignment = self._header_align
+
+        for col_letter, width in self._column_widths.items():
+            ws.column_dimensions[col_letter].width = width
+
+    def style_data_row(self, ws: Worksheet, row_index: int) -> None:
+        """Выравнивает ячейки новой строки данных."""
+        ws.cell(row=row_index, column=1).alignment = self._left_align
+        ws.cell(row=row_index, column=2).alignment = self._left_align
+        ws.cell(row=row_index, column=3).alignment = self._center_align
+        ws.cell(row=row_index, column=4).alignment = self._center_align
 
 
 class ExcelJournalStorage:
     """
     Управление файлом журнала в формате Excel.
 
-    Обеспечивает:
-    - Создание файла с корректной шапкой при первом запуске.
-    - Дописывание записей в конец без изменения существующих строк.
-    - Мгновенное сохранение каждой записи на диск.
-    - Обработку блокировки файла (если открыт в Excel).
+    Отвечает только за жизненный цикл книги Excel и сохранение на диск,
+    делегируя маппинг строк, оформление и стратегию повторов внешним зависимостям.
     """
 
     def __init__(
         self,
         file_path: str | Path = "journal.xlsx",
-        lock_retry_handler: Callable[[Path, Exception], bool] | None = None,
+        lock_retry_handler: LockRetryHandler | None = None,
+        mapper: RecordRowMapper | None = None,
+        styler: ExcelSheetStyler | None = None,
+        sheet_name: str = "Экзамен",
     ) -> None:
         self.file_path = Path(file_path)
-        self.lock_retry_handler = lock_retry_handler or default_lock_handler
+        self.lock_retry_handler = lock_retry_handler
+        self._mapper: RecordRowMapper = mapper or StudentRecordRowMapper()
+        self._styler: ExcelSheetStyler = styler or DefaultExcelSheetStyler()
+        self._sheet_name = sheet_name
+
+    def describe(self) -> str:
+        """Возвращает человекочитаемое описание расположения журнала."""
+        return f"Файл журнала: {self.file_path.resolve()}"
 
     def ensure_initialized(self) -> None:
         """Создает файл журнала с шапкой, если файл еще не существует."""
@@ -71,95 +113,80 @@ class ExcelJournalStorage:
 
         self._create_new_journal()
 
-    def _create_new_journal(self) -> None:
-        """Создает новый рабочий файл с заголовками и форматированием."""
-        self.file_path.parent.mkdir(parents=True, exist_ok=True)
+    def _build_initialized_workbook(self) -> openpyxl.Workbook:
+        """Создает новую книгу Excel с заполненной и оформленной шапкой."""
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Экзамен"
+        ws.title = self._sheet_name
+        headers = list(self._mapper.headers)
+        ws.append(headers)
+        self._styler.style_header(ws, len(headers))
+        return wb
 
-        # Добавление шапки
-        ws.append(HEADER_ROW)
+    def _create_new_journal(self) -> None:
+        """Создает новый рабочий файл с заголовками и сохраняет на диск."""
+        self.file_path.parent.mkdir(parents=True, exist_ok=True)
+        wb = self._build_initialized_workbook()
+        try:
+            self._save_workbook_with_retry(wb)
+        finally:
+            wb.close()
 
-        # Стилизация шапки
-        header_font = Font(name="Calibri", size=11, bold=True, color="000000")
-        header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
-        header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    def _load_or_recreate_workbook(self) -> openpyxl.Workbook:
+        """Загружает существующую книгу Excel с обработкой блокировки или повреждения."""
+        while True:
+            if not self.file_path.exists():
+                return self._build_initialized_workbook()
 
-        for col_idx in range(1, len(HEADER_ROW) + 1):
-            cell = ws.cell(row=1, column=col_idx)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = header_align
-
-        # Настройка ширины колонок для красивого отображения
-        col_widths = {"A": 20, "B": 20, "C": 16, "D": 22}
-        for col_letter, width in col_widths.items():
-            ws.column_dimensions[col_letter].width = width
-
-        self._save_workbook_with_retry(wb)
-        wb.close()
+            try:
+                return openpyxl.load_workbook(self.file_path)
+            except (PermissionError, OSError) as exc:
+                if self._should_retry(exc):
+                    continue
+                raise FileLockedError(
+                    f"Файл '{self.file_path}' заблокирован и недоступен для чтения."
+                ) from exc
+            except InvalidFileException:
+                return self._build_initialized_workbook()
 
     def append_record(self, record: StudentRecord) -> None:
         """
         Дописывает запись о студенте в файл Excel и немедленно сохраняет на диск.
 
         Если файл отсутствует, создает его с шапкой.
-        Если файл заблокирован, запрашивает у пользователя закрытие файла и повторяет попытку.
         """
-        if not self.file_path.exists():
-            self._create_new_journal()
-
+        self.file_path.parent.mkdir(parents=True, exist_ok=True)
+        wb = self._load_or_recreate_workbook()
         try:
-            wb = openpyxl.load_workbook(self.file_path)
-        except (PermissionError, OSError) as exc:
-            # Если даже прочитать не удается из-за эксклюзивной блокировки
-            if self._handle_lock(exc):
-                return self.append_record(record)
-            raise FileLockedError(f"Файл '{self.file_path}' заблокирован и недоступен для чтения.") from exc
-        except InvalidFileException:
-            # Если файл поврежден, перезапускаем с шапкой
-            wb = openpyxl.Workbook()
             ws = wb.active
-            ws.title = "Экзамен"
-            ws.append(HEADER_ROW)
+            # Проверяем наличие шапки, если файл был пустой
+            if ws.max_row == 0 or (ws.max_row == 1 and all(cell.value is None for cell in ws[1])):
+                headers = list(self._mapper.headers)
+                ws.append(headers)
+                self._styler.style_header(ws, len(headers))
 
-        ws = wb.active
-
-        # Проверяем наличие шапки, если файл был пустой
-        if ws.max_row == 0 or (ws.max_row == 1 and all(cell.value is None for cell in ws[1])):
-            ws.append(HEADER_ROW)
-
-        # Дописываем строку данных
-        row_values = record.to_row()
-        ws.append(row_values)
-
-        # Выравнивание ячеек в новой строке
-        current_row = ws.max_row
-        ws.cell(row=current_row, column=1).alignment = Alignment(horizontal="left", vertical="center")
-        ws.cell(row=current_row, column=2).alignment = Alignment(horizontal="left", vertical="center")
-        ws.cell(row=current_row, column=3).alignment = Alignment(horizontal="center", vertical="center")
-        ws.cell(row=current_row, column=4).alignment = Alignment(horizontal="center", vertical="center")
-
-        # Сохранение с обработкой блокировки
-        self._save_workbook_with_retry(wb)
-        wb.close()
+            ws.append(self._mapper.to_row(record))
+            self._styler.style_data_row(ws, ws.max_row)
+            self._save_workbook_with_retry(wb)
+        finally:
+            wb.close()
 
     def _save_workbook_with_retry(self, wb: openpyxl.Workbook) -> None:
-        """Сохраняет книгу Excel, обрабатывая блокировку файла."""
+        """Сохраняет книгу Excel, делегируя реакцию на блокировку файла."""
         while True:
             try:
                 wb.save(self.file_path)
                 return
             except (PermissionError, OSError) as exc:
-                should_retry = self._handle_lock(exc)
-                if not should_retry:
+                if not self._should_retry(exc):
                     raise FileLockedError(
                         f"Не удалось сохранить запись: файл '{self.file_path}' заблокирован."
                     ) from exc
 
-    def _handle_lock(self, exc: Exception) -> bool:
-        """Вызывает обработчик блокировки файла."""
+    def _should_retry(self, exc: Exception) -> bool:
+        """Запрашивает у обработчика блокировки необходимость повторной попытки."""
+        if self.lock_retry_handler is None:
+            return False
         return self.lock_retry_handler(self.file_path, exc)
 
     def read_all_rows(self) -> list[tuple[Any, ...]]:
@@ -167,15 +194,25 @@ class ExcelJournalStorage:
         if not self.file_path.exists():
             return []
         wb = openpyxl.load_workbook(self.file_path, data_only=True)
-        ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))
-        wb.close()
-        return rows
+        try:
+            ws = wb.active
+            return list(ws.iter_rows(values_only=True))
+        finally:
+            wb.close()
 
     def get_records_count(self) -> int:
         """Возвращает количество записей студентов (строки за вычетом шапки)."""
         rows = self.read_all_rows()
         if not rows:
             return 0
-        # Исключаем шапку
         return max(0, len(rows) - 1)
+
+
+__all__ = [
+    "HEADER_ROW",
+    "FileLockedError",
+    "StudentRecordRowMapper",
+    "ExcelSheetStyler",
+    "DefaultExcelSheetStyler",
+    "ExcelJournalStorage",
+]

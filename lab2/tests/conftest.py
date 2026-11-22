@@ -3,12 +3,21 @@ Pytest fixtures для тестирования приложения генер�
 """
 
 from __future__ import annotations
+import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import Iterator
 import pytest
 import openpyxl
 import docx
+
+# Обеспечиваем гарантированное нахождение библиотек Tcl/Tk в Windows Python
+for _base in (Path(sys.base_prefix) / "tcl", Path("C:/Python314/tcl")):
+    if (_base / "tcl8.6").is_dir() and "TCL_LIBRARY" not in os.environ:
+        os.environ["TCL_LIBRARY"] = str(_base / "tcl8.6")
+    if (_base / "tk8.6").is_dir() and "TK_LIBRARY" not in os.environ:
+        os.environ["TK_LIBRARY"] = str(_base / "tk8.6")
 
 from ticket_gui.models import Student, Ticket
 from ticket_gui.parsers import ExcelStudentReader, DocxTicketParser

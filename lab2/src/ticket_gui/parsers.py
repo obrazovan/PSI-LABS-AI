@@ -6,18 +6,13 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
-import openpyxl
 import docx
+import openpyxl
 
+from .exceptions import SourceNotFoundError
 from .models import Student, Ticket
 
 logger = logging.getLogger(__name__)
-
-
-class SourceNotFoundError(FileNotFoundError):
-    """Исключение при отсутствии входного файла данных."""
-    pass
 
 
 class ExcelStudentReader:
@@ -32,6 +27,11 @@ class ExcelStudentReader:
 
     def __init__(self, file_path: str | Path = "students.xlsx") -> None:
         self.file_path = Path(file_path)
+
+    @property
+    def source_name(self) -> str:
+        """Возвращает отображаемое имя источника студентов."""
+        return f"Список студентов ({self.file_path.name})"
 
     def is_available(self) -> bool:
         """Проверяет существование файла на диске."""
@@ -48,52 +48,45 @@ class ExcelStudentReader:
             raise SourceNotFoundError(f"Файл со списком студентов не найден: {self.file_path}")
 
         wb = openpyxl.load_workbook(self.file_path, read_only=True)
-        groups = [sheet_name.strip() for sheet_name in wb.sheetnames if sheet_name.strip()]
-        wb.close()
-        return groups
+        try:
+            return [sheet_name.strip() for sheet_name in wb.sheetnames if sheet_name.strip()]
+        finally:
+            wb.close()
 
     def load_students_for_group(self, group_name: str) -> list[Student]:
         """
         Загружает студентов указанной группы.
-        Если группа пуста — возвращает пустой список без исключений.
+        Если группа пуста или отсутствует — возвращает пустой список без исключений.
         """
         if not self.is_available():
             raise SourceNotFoundError(f"Файл со списком студентов не найден: {self.file_path}")
 
-        wb = openpyxl.load_workbook(self.file_path, data_only=True)
-        if group_name not in wb.sheetnames:
+        wb = openpyxl.load_workbook(self.file_path, read_only=True, data_only=True)
+        try:
+            if group_name not in wb.sheetnames:
+                return []
+
+            ws = wb[group_name]
+            students: list[Student] = []
+
+            # Читаем со строки 2 (строка 1 — шапка)
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row or len(row) < 2:
+                    continue
+                last_name_val, first_name_val = row[0], row[1]
+                if last_name_val is None or first_name_val is None:
+                    continue
+
+                last_name = str(last_name_val).strip()
+                first_name = str(first_name_val).strip()
+                if last_name and first_name:
+                    students.append(
+                        Student(group=group_name, last_name=last_name, first_name=first_name)
+                    )
+
+            return students
+        finally:
             wb.close()
-            return []
-
-        ws = wb[group_name]
-        students: list[Student] = []
-
-        # Читаем со строки 2 (строка 1 — шапка)
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not row or len(row) < 2:
-                continue
-            last_name_val = row[0]
-            first_name_val = row[1]
-
-            if last_name_val is None or first_name_val is None:
-                continue
-
-            last_name = str(last_name_val).strip()
-            first_name = str(first_name_val).strip()
-
-            if last_name and first_name:
-                students.append(Student(group=group_name, last_name=last_name, first_name=first_name))
-
-        wb.close()
-        return students
-
-    def load_all_students(self) -> dict[str, list[Student]]:
-        """Загружает структуру всех групп и их студентов в словарь {группа: [студенты]}."""
-        groups = self.load_groups()
-        result: dict[str, list[Student]] = {}
-        for group in groups:
-            result[group] = self.load_students_for_group(group)
-        return result
 
 
 class DocxTicketParser:
@@ -112,10 +105,16 @@ class DocxTicketParser:
     """
 
     TICKET_HEADER_PATTERN = re.compile(r"^\s*Билет\s*(?:№\s*)?(\d+)\s*$", re.IGNORECASE)
+    HEADER_CANDIDATE_PATTERN = re.compile(r"^\s*Билет\b", re.IGNORECASE)
     QUESTION_PATTERN = re.compile(r"^\s*(\d+)[\.\)]\s*(.+)$")
 
     def __init__(self, file_path: str | Path = "tickets.docx") -> None:
         self.file_path = Path(file_path)
+
+    @property
+    def source_name(self) -> str:
+        """Возвращает отображаемое имя источника билетов."""
+        return f"Список билетов ({self.file_path.name})"
 
     def is_available(self) -> bool:
         """Проверяет существование файла tickets.docx."""
@@ -163,25 +162,32 @@ class DocxTicketParser:
 
             header_match = self.TICKET_HEADER_PATTERN.match(text)
             if header_match:
-                # Нашли заголовок следующего билета — финализируем предыдущий
                 finalize_ticket()
                 current_number = int(header_match.group(1))
                 continue
 
-            if current_number is not None:
-                # Проверяем, является ли абзац вопросом
-                q_match = self.QUESTION_PATTERN.match(text)
-                if q_match:
-                    # Извлекаем текст вопроса (с сохранением или без номера)
-                    current_questions.append(text)
-                else:
-                    # Если строка без цифры, но идет внутри билета
-                    current_questions.append(text)
+            if self.HEADER_CANDIDATE_PATTERN.match(text):
+                finalize_ticket()
+                logger.warning("Нераспознанный заголовок билета пропущен: %s", text)
+                continue
 
-        # Финализируем последний билет документа
+            if current_number is not None:
+                current_questions.append(self._extract_question_text(text))
+            else:
+                logger.warning("Строка вне распознанного билета пропущена: %s", text)
+
         finalize_ticket()
 
         if not tickets:
             logger.warning("В файле %s не найдено ни одного валидного билета.", self.file_path)
 
         return tickets
+
+    def _extract_question_text(self, text: str) -> str:
+        """Извлекает формулировку вопроса, удаляя ведущий номер вида '1. ' или '1) '."""
+        q_match = self.QUESTION_PATTERN.match(text)
+        if q_match:
+            cleaned = q_match.group(2).strip()
+            if cleaned:
+                return cleaned
+        return text

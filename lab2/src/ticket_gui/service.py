@@ -5,75 +5,102 @@
 from __future__ import annotations
 import logging
 import random
-from typing import Dict, List, Optional, Tuple
+from typing import Sequence
 
-from .models import Student, Ticket, ExamResult
-from .parsers import ExcelStudentReader, DocxTicketParser, SourceNotFoundError
-from .storage import ResultJournalStorage
+from .exceptions import NoTicketsAvailableError
+from .models import ExamResult, InitializationReport, Student, Ticket
+from .ports import (
+    ResultStorageProtocol,
+    StudentReaderProtocol,
+    TicketParserProtocol,
+    TicketSelectionStrategyProtocol,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class NoTicketsAvailableError(RuntimeError):
-    """Исключение при отсутствии доступных билетов."""
-    pass
+class RandomTicketSelector:
+    """Стратегия случайного выбора номера билета из доступных (OCP)."""
+
+    def __init__(self, seed: int | None = None) -> None:
+        self._rng = random.Random(seed)
+
+    def select_ticket_number(self, available_numbers: Sequence[int]) -> int:
+        if not available_numbers:
+            raise NoTicketsAvailableError("Список доступных номеров билетов пуст.")
+        return self._rng.choice(sorted(available_numbers))
 
 
 class TicketService:
     """
     Координатор бизнес-логики приложения.
 
-    Реализует правила:
-    1. Идемпотентность: если студент уже есть в results.xlsx, ему назначается
-       номер билета из самой первой записи по этому студенту, новый билет не
-       генерируется, а строка пишется с пометкой 'да' в колонке 'Повтор'.
-    2. Случайный выбор: если студента нет в журнале — билет выбирается случайно
-       из доступных валидных билетов, с пометкой 'нет'.
-    3. Мгновенное сохранение в журнал.
+    Зависит исключительно от абстракций (StudentReaderProtocol, TicketParserProtocol,
+    ResultStorageProtocol, TicketSelectionStrategyProtocol) согласно DIP и ISP.
     """
 
     def __init__(
         self,
-        student_reader: ExcelStudentReader,
-        ticket_parser: DocxTicketParser,
-        storage: ResultJournalStorage,
+        student_reader: StudentReaderProtocol,
+        ticket_parser: TicketParserProtocol,
+        storage: ResultStorageProtocol,
+        ticket_selector: TicketSelectionStrategyProtocol | None = None,
         seed: int | None = None,
     ) -> None:
         self.student_reader = student_reader
         self.ticket_parser = ticket_parser
         self.storage = storage
-        self._rng = random.Random(seed)
+        self._ticket_selector: TicketSelectionStrategyProtocol = (
+            ticket_selector if ticket_selector is not None else RandomTicketSelector(seed=seed)
+        )
 
         self._tickets: dict[int, Ticket] = {}
         self._groups: list[str] = []
+        self._initialized: bool = False
+        self._last_report: InitializationReport | None = None
 
     @property
     def tickets(self) -> dict[int, Ticket]:
         return self._tickets
 
-    def initialize(self) -> None:
+    def initialize(self, force: bool = False) -> InitializationReport:
         """
-        Инициализирует хранилище результатов и загружает данные из входных файлов.
+        Инициализирует хранилище результатов, проверяет источники и загружает данные.
         """
+        if self._initialized and self._last_report is not None and not force:
+            return self._last_report
+
         self.storage.ensure_initialized()
+
+        missing_sources: list[str] = []
 
         if self.student_reader.is_available():
             try:
                 self._groups = self.student_reader.load_groups()
-            except Exception as e:
-                logger.error("Ошибка при чтении groups из students.xlsx: %s", e)
+            except Exception as exc:
+                logger.error("Ошибка при чтении групп из источника студентов: %s", exc)
                 self._groups = []
         else:
+            missing_sources.append(self.student_reader.source_name)
             self._groups = []
 
         if self.ticket_parser.is_available():
             try:
                 self._tickets = self.ticket_parser.parse_tickets()
-            except Exception as e:
-                logger.error("Ошибка при парсинге tickets.docx: %s", e)
+            except Exception as exc:
+                logger.error("Ошибка при парсинге билетов: %s", exc)
                 self._tickets = {}
         else:
+            missing_sources.append(self.ticket_parser.source_name)
             self._tickets = {}
+
+        self._last_report = InitializationReport(
+            missing_sources=tuple(missing_sources),
+            groups_count=len(self._groups),
+            tickets_count=len(self._tickets),
+        )
+        self._initialized = True
+        return self._last_report
 
     def get_groups(self) -> list[str]:
         """Возвращает список доступных групп."""
@@ -85,8 +112,8 @@ class TicketService:
             return []
         try:
             return self.student_reader.load_students_for_group(group)
-        except Exception as e:
-            logger.error("Не удалось загрузить студентов для группы %s: %s", group, e)
+        except Exception as exc:
+            logger.error("Не удалось загрузить студентов для группы %s: %s", group, exc)
             return []
 
     def assign_ticket(self, student: Student) -> tuple[Ticket, ExamResult]:
@@ -99,7 +126,6 @@ class TicketService:
         if not self._tickets:
             raise NoTicketsAvailableError("В файле tickets.docx отсутствуют корректные билеты.")
 
-        # 1. Проверяем, есть ли студент в results.xlsx (идемпотентность)
         first_ticket_number = self.storage.get_first_ticket_for_student(
             group=student.group,
             last_name=student.last_name,
@@ -107,26 +133,14 @@ class TicketService:
         )
 
         if first_ticket_number is not None:
-            # Студент уже сдавал — берем номер из первой записи
             assigned_number = first_ticket_number
             is_repeat = True
         else:
-            # Студент сдает впервые — случайный выбор из доступных билетов
-            available_numbers = sorted(list(self._tickets.keys()))
-            assigned_number = self._rng.choice(available_numbers)
+            assigned_number = self._ticket_selector.select_ticket_number(list(self._tickets.keys()))
             is_repeat = False
 
-        # Получаем объект билета (если номер есть в словаре)
-        if assigned_number in self._tickets:
-            ticket = self._tickets[assigned_number]
-        else:
-            # Редкий случай: билет был в старых записях results, но удален из docx
-            ticket = Ticket(
-                number=assigned_number,
-                questions=("Вопрос 1", "Вопрос 2", "Вопрос 3"),
-            )
+        ticket = self._resolve_ticket(assigned_number)
 
-        # Создаем результат и сразу сохраняем в файл
         result = ExamResult(
             group=student.group,
             last_name=student.last_name,
@@ -137,3 +151,12 @@ class TicketService:
 
         self.storage.append_result(result)
         return ticket, result
+
+    def _resolve_ticket(self, ticket_number: int) -> Ticket:
+        """Возвращает объект билета по номеру или резервный билет, если номер удален из docx."""
+        if ticket_number in self._tickets:
+            return self._tickets[ticket_number]
+        return Ticket(
+            number=ticket_number,
+            questions=("Вопрос 1", "Вопрос 2", "Вопрос 3"),
+        )

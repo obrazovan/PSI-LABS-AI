@@ -5,7 +5,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Sequence, Any
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -67,18 +67,18 @@ class Ticket:
             raise ValueError(f"Билет №{self.number} содержит меньше 3 вопросов ({len(self.questions)})")
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExamResult:
     """
-    Результат назначения экзаменационного билета.
+    Неизменяемый результат назначения экзаменационного билета.
 
     Attributes:
         group: Учебная группа.
         last_name: Фамилия.
         first_name: Имя.
         ticket_number: Назначенный номер билета.
-        timestamp: Дата и время назначения (YYYY-MM-DD HH:MM:SS).
         is_repeat: Флаг повторной генерации (True -> 'да', False -> 'нет').
+        timestamp: Дата и время назначения (YYYY-MM-DD HH:MM:SS).
     """
 
     group: str
@@ -89,9 +89,9 @@ class ExamResult:
     timestamp: str = field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     def __post_init__(self) -> None:
-        self.group = self.group.strip()
-        self.last_name = self.last_name.strip()
-        self.first_name = self.first_name.strip()
+        object.__setattr__(self, "group", self.group.strip())
+        object.__setattr__(self, "last_name", self.last_name.strip())
+        object.__setattr__(self, "first_name", self.first_name.strip())
 
     @property
     def repeat_str(self) -> str:
@@ -99,7 +99,7 @@ class ExamResult:
         return "да" if self.is_repeat else "нет"
 
     def to_row(self) -> list[Any]:
-        """Возвращает строку таблицы для записи в results.xlsx."""
+        """Возвращает представление записи в виде списка полей журнала."""
         return [
             self.group,
             self.last_name,
@@ -108,3 +108,19 @@ class ExamResult:
             self.timestamp,
             self.repeat_str,
         ]
+
+
+@dataclass(frozen=True)
+class InitializationReport:
+    """
+    Сводка результата инициализации приложения без утечки деталей инфраструктуры в UI.
+    """
+
+    missing_sources: tuple[str, ...]
+    groups_count: int
+    tickets_count: int
+
+    @property
+    def is_ready(self) -> bool:
+        """Возвращает True, если все обязательные источники данных доступны."""
+        return not self.missing_sources

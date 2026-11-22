@@ -3,91 +3,84 @@
 """
 
 from __future__ import annotations
-import sys
+
 from .models import StudentRecord
-from .generator import TicketGenerator, RandomTicketGenerator
-from .storage import ExcelJournalStorage, FileLockedError
-from .console import ConsoleIO, get_console_io
+from .ports import ConsoleIO, JournalWriter, StorageError, TicketGenerator
 
 
 class TicketApp:
     """
     Основное приложение генератора экзаменационных билетов.
 
-    Связывает консольный интерфейс, логику генерации билетов и хранилище Excel.
+    Зависит исключительно от абстракций (портов) и координирует сценарий
+    ввода студента, генерации билета и сохранения записи в журнал.
     """
 
     def __init__(
         self,
-        storage: ExcelJournalStorage | None = None,
-        generator: TicketGenerator | None = None,
-        console: ConsoleIO | None = None,
+        storage: JournalWriter,
+        generator: TicketGenerator,
+        console: ConsoleIO,
+        storage_description: str | None = None,
     ) -> None:
-        self.storage = storage or ExcelJournalStorage()
-        self.generator = generator or RandomTicketGenerator()
-        self.console = console or get_console_io()
+        self.storage = storage
+        self.generator = generator
+        self.console = console
+        self.storage_description = storage_description
 
     def run(self) -> int:
         """
         Запускает основной цикл приложения.
 
         Шаги:
-        1. При запуске выводится подсказка: 'Для выхода нажмите ESC.'
-        2. Приложение запрашивает 'Last name: ' — подтверждается Enter.
-        3. Приложение запрашивает 'First name: ' — подтверждается Enter.
-        4. Генерируется номер билета от 1 до 20.
-        5. Номер выводится в консоль: 'Билет № <номер>.'
-        6. Запись немедленно дописывается в Excel-файл.
-        7. Цикл повторяется до нажатия ESC.
+        1. Инициализируется хранилище.
+        2. Выводится подсказка: 'Для выхода нажмите ESC.'
+        3. Запрашиваются 'Last name: ' и 'First name: ' до нажатия ESC.
+        4. Генерируется номер билета и выводится: 'Билет № <номер>.'.
+        5. Запись немедленно сохраняется в хранилище.
         """
         try:
-            # Инициализация хранилища (создание файла с шапкой при необходимости)
             self.storage.ensure_initialized()
-        except FileLockedError as exc:
+        except StorageError as exc:
             self.console.print(f"Ошибка при инициализации: {exc}")
             return 1
 
-        # Шаг 1: Подсказка при запуске
         self.console.show_startup_hint()
-        self.console.print(f"Файл журнала: {self.storage.file_path.resolve()}\n")
+        if self.storage_description:
+            self.console.print(f"{self.storage_description}\n")
 
         try:
-            while True:
-                # Шаг 2: Запрос фамилии
-                last_name = self.console.read_name("Last name: ")
-                if last_name is None:
-                    # Нажата клавиша ESC на шаге ввода фамилии
-                    break
-
-                # Шаг 3: Запрос имени
-                first_name = self.console.read_name("First name: ")
-                if first_name is None:
-                    # Нажата клавиша ESC на шаге ввода имени
-                    break
-
-                # Шаг 4: Генерация номера билета
-                ticket_number = self.generator.generate()
-
-                # Шаг 5: Вывод номера билета в консоль
-                self.console.print(f"Билет № {ticket_number}.")
-
-                # Шаг 6: Сохранение записи в Excel
-                record = StudentRecord(
-                    last_name=last_name,
-                    first_name=first_name,
-                    ticket_number=ticket_number,
-                )
-
-                try:
-                    self.storage.append_record(record)
-                except FileLockedError as exc:
-                    self.console.print(f"\n[Ошибка сохранения] {exc}")
-                    # Предлагаем пользователю продолжить или выйти
-                    continue
-
+            while self._process_single_student():
+                pass
         except KeyboardInterrupt:
             self.console.print("\nПрограмма прервана пользователем.")
             return 0
 
         self.console.print("Работа программы завершена.")
         return 0
+
+    def _process_single_student(self) -> bool:
+        """Обрабатывает ввод одного студента. Возвращает False при сигнале выхода."""
+        last_name = self.console.read_name("Last name: ")
+        if last_name is None:
+            return False
+
+        first_name = self.console.read_name("First name: ")
+        if first_name is None:
+            return False
+
+        ticket_number = self.generator.generate()
+        record = StudentRecord(
+            last_name=last_name,
+            first_name=first_name,
+            ticket_number=ticket_number,
+        )
+
+        self.console.print(f"Билет № {record.ticket_number}.")
+
+        try:
+            self.storage.append_record(record)
+        except StorageError as exc:
+            self.console.print(f"\n[Ошибка сохранения] {exc}")
+
+        return True

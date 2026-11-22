@@ -3,10 +3,15 @@ Unit-тесты для модуля console.py.
 """
 
 import io
+from pathlib import Path
 from unittest.mock import patch
 import pytest
 
-from ticket_generator.console import StreamConsoleIO, WindowsConsoleIO
+from ticket_generator.console import (
+    ConsoleLockRetryHandler,
+    StreamConsoleIO,
+    WindowsConsoleIO,
+)
 
 
 class TestStreamConsoleIO:
@@ -102,3 +107,26 @@ class TestWindowsConsoleIO:
         with patch("msvcrt.getwch", side_effect=keys):
             res = console.read_name("Name: ")
             assert res == "Б"
+
+    def test_ctrl_c_raises_keyboard_interrupt(self):
+        out_stream = io.StringIO()
+        console = WindowsConsoleIO(stdout=out_stream)
+
+        with patch("msvcrt.getwch", side_effect=["\x03"]):
+            with pytest.raises(KeyboardInterrupt):
+                console.read_name("Name: ")
+
+
+class TestConsoleLockRetryHandler:
+    def test_enter_retries(self):
+        out_stream = io.StringIO()
+        handler = ConsoleLockRetryHandler(stdin=io.StringIO("\n"), stdout=out_stream)
+
+        should_retry = handler(Path("journal.xlsx"), PermissionError("locked"))
+        assert should_retry is True
+        assert "journal.xlsx" in out_stream.getvalue()
+
+    def test_cancel_tokens_abort(self):
+        for token in ("exit\n", "q\n", "QUIT\n", ""):
+            handler = ConsoleLockRetryHandler(stdin=io.StringIO(token), stdout=io.StringIO())
+            assert handler(Path("journal.xlsx"), PermissionError("locked")) is False

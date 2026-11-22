@@ -15,8 +15,18 @@ from ticket_gui.service import TicketService
 
 @pytest.fixture
 def tk_root():
-    """Фикстура для корневого окна Tkinter."""
-    root = tk.Tk()
+    """Фикстура для корневого окна Tkinter с защитой от Windows Tcl гонки."""
+    root = None
+    for _attempt in range(5):
+        try:
+            root = tk.Tk()
+            break
+        except tk.TclError:
+            if _attempt < 4:
+                import time
+                time.sleep(0.08 * (_attempt + 1))
+                continue
+            raise
     root.withdraw()
     yield root
     try:

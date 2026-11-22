@@ -55,3 +55,10 @@ class TestFixedTicketGenerator:
     def test_empty_sequence_raises_error(self):
         with pytest.raises(ValueError, match="не может быть пустым"):
             FixedTicketGenerator([])
+
+    def test_non_positive_or_non_int_tickets_raise_error(self):
+        with pytest.raises(ValueError, match="больше 0"):
+            FixedTicketGenerator([1, 0])
+
+        with pytest.raises(TypeError, match="целыми числами"):
+            FixedTicketGenerator([True])  # type: ignore

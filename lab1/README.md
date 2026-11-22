@@ -35,13 +35,14 @@ lab1/
 ├── README.md                        # Документация лабораторной работы
 ├── src/
 │   └── ticket_generator/
-│       ├── __init__.py              # Экспорт публичных классов
+│       ├── __init__.py              # Экспорт публичных классов и протоколов
 │       ├── models.py                # Модель данных StudentRecord (валидация, нормализация)
-│       ├── generator.py             # Интерфейс TicketGenerator и RandomTicketGenerator
-│       ├── storage.py               # ExcelJournalStorage (создание, аппенд, обработка lock-файлов)
-│       ├── console.py               # WindowsConsoleIO (msvcrt) и StreamConsoleIO с поддержкой ESC
-│       ├── app.py                   # TicketApp — координатор логики приложения
-│       └── __main__.py              # CLI запуск модуля: python -m ticket_generator
+│       ├── ports.py                 # Абстракции (Protocol) и базовые исключения (ISP / DIP)
+│       ├── generator.py             # Реализации TicketGenerator (RandomTicketGenerator, FixedTicketGenerator)
+│       ├── storage.py               # ExcelJournalStorage, StudentRecordRowMapper, DefaultExcelSheetStyler
+│       ├── console.py               # WindowsConsoleIO, StreamConsoleIO, ConsoleLockRetryHandler
+│       ├── app.py                   # TicketApp — координатор логики (зависит только от ports и models)
+│       └── __main__.py              # Composition Root и CLI запуск: python -m ticket_generator
 └── tests/
     ├── conftest.py                  # Pytest фикстуры (временный Excel, мок-консоль)
     ├── test_models.py               # Тесты валидации моделей
@@ -93,12 +94,12 @@ python run.py --min-ticket 1 --max-ticket 30
 В проекте реализован полный набор модульных и интеграционных тестов с покрытием всех требований спецификации:
 
 ```bash
-pytest
+python -m pytest
 ```
 
 Вывод:
 ```text
-============================= 36 passed in 0.69s ==============================
+============================= 46 passed in 1.56s ==============================
 ```
 
 ---

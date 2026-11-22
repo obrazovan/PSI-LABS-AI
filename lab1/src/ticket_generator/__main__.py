@@ -6,22 +6,19 @@ import argparse
 import sys
 from pathlib import Path
 
-# Обеспечиваем корректное отображение кириллицы в консоли Windows
-if hasattr(sys.stdout, "reconfigure"):
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
-        sys.stdin.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
-
 from .app import TicketApp
-from .storage import ExcelJournalStorage
+from .console import ConsoleLockRetryHandler, configure_utf8_stdio, get_console_io
 from .generator import RandomTicketGenerator
-from .console import get_console_io
+from .storage import (
+    DefaultExcelSheetStyler,
+    ExcelJournalStorage,
+    StudentRecordRowMapper,
+)
 
 
 def main(default_file: Path | str | None = None) -> int:
+    """Точка сборки зависимостей (Composition Root) и запуска приложения."""
+    configure_utf8_stdio()
     default_path = str(default_file) if default_file is not None else "journal.xlsx"
 
     parser = argparse.ArgumentParser(
@@ -48,11 +45,21 @@ def main(default_file: Path | str | None = None) -> int:
 
     args = parser.parse_args()
 
-    storage = ExcelJournalStorage(file_path=args.file)
+    storage = ExcelJournalStorage(
+        file_path=args.file,
+        lock_retry_handler=ConsoleLockRetryHandler(),
+        mapper=StudentRecordRowMapper(),
+        styler=DefaultExcelSheetStyler(),
+    )
     generator = RandomTicketGenerator(min_ticket=args.min_ticket, max_ticket=args.max_ticket)
     console = get_console_io()
 
-    app = TicketApp(storage=storage, generator=generator, console=console)
+    app = TicketApp(
+        storage=storage,
+        generator=generator,
+        console=console,
+        storage_description=storage.describe(),
+    )
     return app.run()
 
 
