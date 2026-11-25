@@ -40,7 +40,9 @@ class _HttpHandler(BaseHTTPRequestHandler):
     def _send_response(self, status: int, headers: dict[str, str], content: bytes) -> None:
         try:
             self.close_connection = True
-            self.send_response(status)
+            self.send_response_only(status)
+            self.send_header("Server", "TicketWebServer/2.1")
+            self.send_header("Date", self.date_time_string())
             for key, val in headers.items():
                 self.send_header(key, val)
             self.send_header("Connection", "close")
@@ -49,8 +51,11 @@ class _HttpHandler(BaseHTTPRequestHandler):
         except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
             pass
 
+    def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
+        pass
+
     def log_message(self, format: str, *args: Any) -> None:
-        logger.debug("%s - - [%s] %s", self.address_string(), self.log_date_time_string(), format % args)
+        pass
 
 
 class _SilentHTTPServer(HTTPServer):

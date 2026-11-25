@@ -87,9 +87,21 @@ class TicketPageObject:
 
 @pytest.fixture(scope="module")
 def playwright_instance():
-    """Запуск и остановка сессии Playwright."""
-    with sync_playwright() as p:
-        yield p
+    """
+    Запуск и остановка сессии Playwright.
+    Защита от CPython 3.14 GC гонки с greenlet stack swapping на Windows.
+    """
+    import gc
+    was_enabled = gc.isenabled()
+    if was_enabled:
+        gc.disable()
+    try:
+        with sync_playwright() as p:
+            yield p
+    finally:
+        if was_enabled:
+            gc.enable()
+            gc.collect()
 
 
 @pytest.fixture(scope="module")

@@ -42,15 +42,7 @@ class TicketWebRouter:
         Обрабатывает входящий запрос. Потокобезопасно сериализует операции с Excel.
         """
         with self._io_lock:
-            import gc
-            was_gc = gc.isenabled()
-            if was_gc:
-                gc.disable()
-            try:
-                return self._handle_unlocked(method, path, body)
-            finally:
-                if was_gc:
-                    gc.enable()
+            return self._handle_unlocked(method, path, body)
 
     def _handle_unlocked(
         self,
